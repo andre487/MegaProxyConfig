@@ -506,6 +506,90 @@
           },
           "maxItems": 1000,
           "uniqueItems": true
+        },
+        "subscriptions": {
+          "$ref": "#/$defs/browserSubscriptions"
+        }
+      },
+      "required": [],
+      "additionalProperties": true
+    },
+    "browserSubscriptions": {
+      "type": "object",
+      "properties": {
+        "domainSources": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "russia_inside",
+              "russia_outside",
+              "ukraine_inside",
+              "geoblock",
+              "block",
+              "porn",
+              "news",
+              "anime",
+              "hodca",
+              "youtube",
+              "discord",
+              "meta",
+              "twitter",
+              "telegram",
+              "tiktok",
+              "hdrezka",
+              "google_ai",
+              "google_play",
+              "roblox",
+              "cloudflare",
+              "cloudfront",
+              "digitalocean",
+              "hetzner",
+              "ovh"
+            ]
+          },
+          "maxItems": 24,
+          "uniqueItems": true
+        },
+        "siteSources": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "russia_inside",
+              "russia_outside",
+              "ukraine_inside",
+              "geoblock",
+              "block",
+              "porn",
+              "news",
+              "anime",
+              "hodca",
+              "youtube",
+              "discord",
+              "meta",
+              "twitter",
+              "telegram",
+              "tiktok",
+              "hdrezka",
+              "google_ai",
+              "google_play",
+              "roblox",
+              "cloudflare",
+              "cloudfront",
+              "digitalocean",
+              "hetzner",
+              "ovh"
+            ]
+          },
+          "maxItems": 24,
+          "uniqueItems": true
+        },
+        "autoUpdate": {
+          "type": "boolean"
+        },
+        "throughProxy": {
+          "type": "boolean"
         }
       },
       "required": [],

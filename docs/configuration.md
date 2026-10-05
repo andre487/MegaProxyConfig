@@ -176,7 +176,8 @@ Omitting it keeps the existing behavior: all eligible requests use the active pr
 
 The two lists are independent and survive mode switches. Each contains at most
 1,000 patterns, each at most 253 characters. Exact hostnames match only themselves.
-`*` matches zero or more characters, including dots: `*.example.com` matches
+`**.example.com` matches both `example.com` and all its subdomains.
+Other `*` patterns match zero or more characters, including dots: `*.example.com` matches
 subdomains but not `example.com`; `example.*` matches several suffixes. Matches
 cover the entire hostname and ignore case and a trailing dot. Wildcard patterns
 use ASCII DNS labels; literal internationalized hostnames are normalized to IDNA
@@ -216,3 +217,73 @@ false. Selective Chromium routing must describe this limitation in its UI and
 must not claim such traffic was proxied. Other local ranges can still be proxied.
 The ordinary, non-selective fixed-server mode can override the implicit bypass.
 See [Chromium proxy documentation](https://chromium.googlesource.com/chromium/src/+/HEAD/net/docs/proxy.md#overriding-the-implicit-bypass-rules).
+
+## Browser domain-list subscriptions
+
+`browser.routing.subscriptions` is an optional browser-only object. It adds domain
+lists from [itdoginfo/allow-domains](https://github.com/itdoginfo/allow-domains), the
+same community source used by Podkop. Only domain entries are consumed; IP
+addresses, CIDRs, URLs and invalid lines are ignored.
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `domainSources` | `[]` | Catalog IDs to add to destination-domain routing. |
+| `siteSources` | `[]` | Catalog IDs to select Firefox tabs by top-level site. |
+| `autoUpdate` | `true` | Refresh daily while the browser is running; retry failures hourly. |
+| `throughProxy` | `false` | Fetch lists and popularity data through the active MegaProxy profile. Without an active profile this option fails, without direct fallback. |
+
+The supported IDs are enumerated in the JSON schema. Sources are selected
+independently for the two modes; selecting a source does not enable selective
+routing automatically. Save preferences before using the manual update button.
+A change in subscriptions triggers an update when auto-update is enabled. With
+auto-update disabled, use the manual update button after import or source changes.
+
+Normalize DNS names to lowercase IDNA and remove trailing dots. Generalize each
+listed domain to a single `**.domain` rule covering itself and all subdomains.
+Remove duplicates and descendants already covered by a listed ancestor.
+Do not guess a registrable parent or expand to a parent missing from the source:
+`a.example.com` alone becomes `**.a.example.com`, not `**.example.com`.
+User-entered patterns remain separate and retain their existing semantics.
+
+The effective limit is 1,000 rules per mode, including manual patterns. Manual
+patterns take priority and are never trimmed by subscription updates. Rank the
+remaining subscription domains by [Tranco](https://tranco-list.eu/), downloading
+popularity data only when truncation is needed. Use the exact hostname's rank,
+otherwise the nearest ranked parent with at least two labels. This is a coarse
+proxy for popularity, especially for shared hosting and service subdomains.
+Unranked domains follow ranked domains and use ASCII lexicographic order to make
+selection reproducible; absence from the ranking does not prove unpopularity.
+Warn explicitly with the number of dropped rules. Dropped domains connect
+directly unless another routing rule selects them.
+
+Tranco downloads normally use the third-party daily GitHub mirror
+[wangmm001/tranco-top1m-cache](https://github.com/wangmm001/tranco-top1m-cache),
+`data/current.version.txt` and `data/current.csv.gz`. Decompress gzip using the
+browser's native `DecompressionStream`; validate the rank/domain CSV. If the
+mirror fails, use the official `https://tranco-list.eu/top-1m-id` and
+`https://tranco-list.eu/download/{id}/1000000` endpoints. If both fail, use cached
+matching ranks or alphabetical order and show a ranking-unavailable warning.
+Only complete, validated list updates replace the previous snapshot; any source
+failure retains the last successful snapshot and shows an error. Downloads are
+bounded to 4 MiB and 200,000 lines per domain source, 32 MiB of decompressed
+ranking CSV, with a 30-second timeout per request.
+
+Preferences are exported; cached lists, download errors, timestamps and ranking
+intersections are local client data and are not exported. Import needs an update
+to obtain the source contents. Unsupported Firefox tab imports in Chromium also
+discard `siteSources`, preserving `domainSources` and download preferences.
+
+When updating through a proxy, do not inject proxy credentials into HTTP origin
+headers; use the browser's proxy authentication. In Chromium, download routing
+requires temporary host-based proxy settings and therefore also affects other
+requests to the source hosts during the update. Restore the saved routing in
+all success and failure paths. Chromium PAC's implicit localhost/link-local
+bypass also applies during these temporary settings. Firefox can select the
+transport for individual extension download requests. No user's browsing
+history or custom domain list is uploaded to ranking providers: fetch the public
+ranking and compare locally.
+
+Tranco attribution: Victor Le Pochat, Tom Van Goethem, Samaneh Tajalizadehkhoob,
+Maciej Korczynski, and Wouter Joosen (2019), *Tranco: A Research-Oriented Top Sites
+Ranking Hardened Against Manipulation*, NDSS,
+[doi:10.14722/ndss.2019.23386](https://doi.org/10.14722/ndss.2019.23386).

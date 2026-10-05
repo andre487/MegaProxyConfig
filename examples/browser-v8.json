@@ -40,7 +40,17 @@
       ],
       "sites": [
         "site.example.com"
-      ]
+      ],
+      "subscriptions": {
+        "domainSources": [
+          "youtube"
+        ],
+        "siteSources": [
+          "discord"
+        ],
+        "autoUpdate": true,
+        "throughProxy": false
+      }
     }
   }
 }

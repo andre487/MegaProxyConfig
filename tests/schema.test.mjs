@@ -56,3 +56,21 @@ test('selective routing is additive, validates both modes and rejects malformed 
     assert.equal(shared(invalid), false)
   }
 })
+
+test('subscriptions are optional and platform-compatible with validated catalog IDs and booleans', async () => {
+  const config = await read('examples/browser-v8.json')
+  assert.ok(shared(config), JSON.stringify(shared.errors))
+  assert.ok(android(config), JSON.stringify(android.errors))
+  for (const change of [
+    c => { c.browser.routing.subscriptions.throughProxy = 'yes' },
+    c => { c.browser.routing.subscriptions.autoUpdate = 1 },
+    c => { c.browser.routing.subscriptions.domainSources = ['missing'] },
+    c => { c.browser.routing.subscriptions.siteSources = ['youtube', 'youtube'] }
+  ]) {
+    const invalid = structuredClone(config)
+    change(invalid)
+    assert.equal(shared(invalid), false)
+  }
+  config.browser.routing.domains = ['**.example.com']
+  assert.ok(shared(config), JSON.stringify(shared.errors))
+})
