@@ -290,30 +290,32 @@ Maciej Korczynski, and Wouter Joosen (2019), *Tranco: A Research-Oriented Top Si
 Ranking Hardened Against Manipulation*, NDSS,
 [doi:10.14722/ndss.2019.23386](https://doi.org/10.14722/ndss.2019.23386).
 
-## Firefox split-proxy profile assignments
+## Domain-to-profile assignments
 
-`browser.routing.assignments` is an optional array (default `[]`, maximum 1000)
-with objects `{ "domain": "example.com", "profileId": "stable-profile-id" }`.
-Both fields are required. `domain` is a hostname, without a scheme, port, path,
-or wildcard. Normalize international names to ASCII; reject duplicate normalized
-domains and references to missing profiles. These assignments only apply to
-Firefox when selective routing is enabled and `mode` is `tabs`.
+`browser.routing.assignments` is optional (default `[]`, maximum 1000), with objects
+`{ "domain": "example.com", "profileId": "stable-profile-id", "includeSubdomains": true }`.
+`domain` and `profileId` are required. `includeSubdomains` is optional and defaults
+to true; false matches only the exact hostname. Normalize international hostnames
+to ASCII. Reject duplicate normalized domains and missing profile references.
+The reserved profile ID `DIRECT` means an explicit direct rule.
 
-Every assignment covers its apex domain and all subdomains. Select the longest
-matching domain: `video.example.com` overrides `example.com`. All requests from
-the matching tab use the selected profile, including third-party resources.
-Local-network and selected-profile bypass rules still take precedence. A manual
-DIRECT tab override takes precedence; a manual proxy override uses the globally
-active profile. Selected sites without an assignment use the active profile.
-A plain hostname in the split-proxy `sites` list also includes subdomains;
-explicit wildcard patterns retain their existing meaning. Only one global
-profile remains active. Disconnecting it disables assignments too.
+Assignments apply when selective routing is enabled. In `domains` mode both
+Chromium and Firefox choose the profile by each request's destination hostname.
+In Firefox `tabs` mode the top-level tab hostname chooses the profile for all
+its attributed requests, including third-party resources. The longest matching
+domain wins. Local-network and selected-profile bypass rules take precedence.
+A manual DIRECT tab override takes precedence; a manual proxy override uses the
+global profile. Unassigned selected destinations or tabs use the global profile.
+A plain hostname in the split-proxy `sites` list includes subdomains.
+Disconnect, explicit global Direct and System modes disable assignments.
 
-Chromium must warn explicitly and discard `assignments`, as it does with the
-other Firefox-only split-proxy fields. Unsupported clients must not silently
-reinterpret assignments as destination-domain routing. Assignments are removed
-when their referenced profile is deleted. Proxy failures on an assigned profile
-do not switch the global active profile or fall back to DIRECT.
+Chromium must warn and discard assignments when importing a Firefox `tabs`
+configuration. It accepts assignments in `domains` mode; it must not reinterpret
+tab assignments as destination rules. Remove assignments when their referenced
+profile is deleted, except `DIRECT`. Assigned-profile failures must not switch
+the global profile or fall back to DIRECT. Older clients may ignore new optional
+fields or warn according to their supported feature set. Android ignores the
+browser routing block.
 
 ## WebRTC privacy preference
 
