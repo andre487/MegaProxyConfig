@@ -270,8 +270,9 @@ ranking CSV, with a 30-second timeout per request.
 
 Preferences are exported; cached lists, download errors, timestamps and ranking
 intersections are local client data and are not exported. Import needs an update
-to obtain the source contents. Unsupported Firefox tab imports in Chromium also
-discard `siteSources`, preserving `domainSources` and download preferences.
+to obtain the source contents. Chromium also warns explicitly and discards `sites` and `siteSources` if they
+contain Firefox tab rules while `mode` is `domains`, preserving `domainSources`
+and download preferences.
 
 When updating through a proxy, do not inject proxy credentials into HTTP origin
 headers; use the browser's proxy authentication. In Chromium, download routing
