@@ -175,14 +175,15 @@ Omitting it keeps the existing behavior: all eligible requests use the active pr
 | `sites` | string array, default `[]` | Top-level site hostname patterns selecting tabs automatically in `tabs` mode. |
 
 The two lists are independent and survive mode switches. Each contains at most
-1,000 patterns, each at most 253 characters. Exact hostnames match only themselves.
+1,000 patterns, each at most 253 characters. In destination-domain mode, exact hostnames match only themselves. In Firefox
+split-proxy mode, plain hostnames also match all their subdomains.
 `**.example.com` matches both `example.com` and all its subdomains.
 Other `*` patterns match zero or more characters, including dots: `*.example.com` matches
 subdomains but not `example.com`; `example.*` matches several suffixes. Matches
 cover the entire hostname and ignore case and a trailing dot. Wildcard patterns
 use ASCII DNS labels; literal internationalized hostnames are normalized to IDNA
 by the extension. Schemes, ports, paths and credentials are forbidden.
-An enabled mode with an empty list connects directly.
+An enabled mode without a matching list entry or Firefox profile assignment connects directly.
 
 In Firefox `tabs` mode, requests attributed to a selected tab use the proxy,
 including frames, scripts and resources on other domains. Top-level navigation
