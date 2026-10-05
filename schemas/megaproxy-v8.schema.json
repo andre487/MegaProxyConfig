@@ -90,6 +90,18 @@
         },
         "routing": {
           "$ref": "#/$defs/browserRouting"
+        },
+        "webRTC": {
+          "type": "string",
+          "enum": [
+            "browser",
+            "default",
+            "default_public_and_private_interfaces",
+            "default_public_interface_only",
+            "disable_non_proxied_udp",
+            "proxy_only",
+            "disabled"
+          ]
         }
       },
       "required": [],
@@ -509,6 +521,31 @@
         },
         "subscriptions": {
           "$ref": "#/$defs/browserSubscriptions"
+        },
+        "assignments": {
+          "type": "array",
+          "maxItems": 1000,
+          "items": {
+            "type": "object",
+            "required": [
+              "domain",
+              "profileId"
+            ],
+            "properties": {
+              "domain": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 253,
+                "pattern": "^[^\\s*/:@?#\\\\]+$"
+              },
+              "profileId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              }
+            },
+            "additionalProperties": true
+          }
         }
       },
       "required": [],

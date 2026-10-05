@@ -74,3 +74,16 @@ test('subscriptions are optional and platform-compatible with validated catalog 
   config.browser.routing.domains = ['**.example.com']
   assert.ok(shared(config), JSON.stringify(shared.errors))
 })
+
+test('WebRTC and Firefox domain assignments are additive and validated', async () => {
+  const config = await read('examples/browser-v8.json')
+  config.browser.webRTC = 'disable_non_proxied_udp'
+  config.browser.routing.assignments = [{ domain: 'example.com', profileId: config.profiles[0].id }]
+  assert.ok(shared(config), JSON.stringify(shared.errors))
+  assert.ok(android(config), JSON.stringify(android.errors))
+  for (const mutate of [c => { c.browser.webRTC = 'invalid' }, c => { c.browser.routing.assignments[0].domain = '*.example.com' }, c => { delete c.browser.routing.assignments[0].profileId }]) {
+    const invalid = structuredClone(config)
+    mutate(invalid)
+    assert.equal(shared(invalid), false)
+  }
+})

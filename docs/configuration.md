@@ -288,3 +288,63 @@ Tranco attribution: Victor Le Pochat, Tom Van Goethem, Samaneh Tajalizadehkhoob,
 Maciej Korczynski, and Wouter Joosen (2019), *Tranco: A Research-Oriented Top Sites
 Ranking Hardened Against Manipulation*, NDSS,
 [doi:10.14722/ndss.2019.23386](https://doi.org/10.14722/ndss.2019.23386).
+
+## Firefox split-proxy profile assignments
+
+`browser.routing.assignments` is an optional array (default `[]`, maximum 1000)
+with objects `{ "domain": "example.com", "profileId": "stable-profile-id" }`.
+Both fields are required. `domain` is a hostname, without a scheme, port, path,
+or wildcard. Normalize international names to ASCII; reject duplicate normalized
+domains and references to missing profiles. These assignments only apply to
+Firefox when selective routing is enabled and `mode` is `tabs`.
+
+Every assignment covers its apex domain and all subdomains. Select the longest
+matching domain: `video.example.com` overrides `example.com`. All requests from
+the matching tab use the selected profile, including third-party resources.
+Local-network and selected-profile bypass rules still take precedence. A manual
+DIRECT tab override takes precedence; a manual proxy override uses the globally
+active profile. Selected sites without an assignment use the active profile.
+A plain hostname in the split-proxy `sites` list also includes subdomains;
+explicit wildcard patterns retain their existing meaning. Only one global
+profile remains active. Disconnecting it disables assignments too.
+
+Chromium must warn explicitly and discard `assignments`, as it does with the
+other Firefox-only split-proxy fields. Unsupported clients must not silently
+reinterpret assignments as destination-domain routing. Assignments are removed
+when their referenced profile is deleted. Proxy failures on an assigned profile
+do not switch the global active profile or fall back to DIRECT.
+
+## WebRTC privacy preference
+
+`browser.webRTC` is optional, default `browser`. Supported values:
+
+- `browser`: release the extension's control and use browser preferences.
+- `default`, `default_public_and_private_interfaces`,
+  `default_public_interface_only`, `disable_non_proxied_udp`: native WebRTC IP
+  handling policies, supported by desktop Chromium and Firefox.
+- `proxy_only`, `disabled`: Firefox-only; the latter disables peer connections.
+
+The preference applies browser-wide, including sites routed directly. Applying
+it requires the optional `privacy` permission and a controllable browser setting.
+Chromium warns and discards Firefox-only values. Imports cannot silently grant
+permissions. Browser sync leaves the local privacy preference unchanged if the
+required permission is absent. No protocol/header modification substitutes for
+this native browser preference.
+
+## Browser synchronization and URL import
+
+Synchronization is enabled by default through `storage.sync`; the browser's
+account and sync preferences determine whether data travels between devices.
+Passwords are included by default, with a separate opt-out. Sync consent and
+password consent are local client preferences, not portable configuration fields.
+The active connection, statistics, downloaded list caches and permissions remain
+local. The most recently published complete configuration wins; clients publish
+chunks before a revision pointer and reject incomplete/invalid snapshots.
+Clients preserve local configuration on quota or validation errors and display
+an error. Password opt-out excludes secrets from published data and from incoming
+snapshots; omitted passwords preserve existing local credentials.
+
+URL import downloads a configuration once using an HTTP(S) URL without embedded
+credentials, under the current routing rules. Enforce a 1 MiB streaming limit and
+a timeout; validate through the same parser and schema as file import. Show the
+same import review and compatibility warnings before applying any changes.
