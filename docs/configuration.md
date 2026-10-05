@@ -71,7 +71,7 @@ DNS providers: CLOUDFLARE, GOOGLE, QUAD9, YANDEX, YANDEX_SAFE, YANDEX_FAMILY, CU
 CUSTOM uses `dns.customDohUrl` (HTTPS endpoint, up to 2,048 characters).
 Filtering DNS policies must not fall back to unfiltered providers.
 
-These fields are retained for portability; their presence does not mean a browser
+These fields are optional Android settings; their presence does not mean a browser
 can implement them. Browser TLS, DNS, IPv6 and transport multiplexing are controlled
 by the browser rather than this extension.
 
@@ -95,8 +95,8 @@ that workflow; credentials entered into the browser prompt are not readable by t
 extension and are not copied into its configuration.
 
 Platform objects are optional. Unknown keys are allowed for forward compatibility
-but known keys are strictly typed. Extensions should preserve ignored Android
-settings when updating or exporting an imported profile. Current Android ignores
+but known keys are strictly typed. Clients must discard unsupported platform fields after displaying the general import
+warning described below. Current Android ignores
 unknown `browser` keys but drops them on its own export. Thus importing browser
 files into Android works, but browser fields will not round-trip through unmodified
 Android; preservation needs a future Android implementation update.
@@ -111,7 +111,8 @@ them for removal. Imported active/always-on IDs do not authorize automatic conne
 Review connection-affecting changes before applying an import.
 
 Export omits passwords and private keys by default. Including secrets requires an
-explicit user choice. Unknown platform settings should be preserved, not executed.
+explicit user choice. Unsupported documented fields and undocumented fields produce one general
+warning and are discarded; neither is retained for export.
 Unsupported profiles may be skipped on import with a visible summary.
 
 Other Android input formats are not portable JSON: FoxyProxy JSON (`data` array;
@@ -133,6 +134,29 @@ BrowserMegaProxy reports their omission in the import review before applying the
 connection profile to the whole browser. PAC entries are skipped.
 
 Without a `browser` block in an updated Android profile, BrowserMegaProxy preserves
-the existing local knock and domain exclusions. The current browser implementation
+the existing local knock and domain exclusions. Unsupported imported Android settings
+are discarded rather than stored in the browser. The current browser implementation
 checks canonical version 8 imports and exports with a standalone validator generated
 from the pinned schema; older versions are normalized by the legacy import parser.
+
+## Unknown fields and import projection
+
+If a receiving client encounters any fields it does not import, show one general
+warning in the import review: **Configuration contains unknown fields.** The Russian
+UI text is **Конфигурация содержит неизвестные поля**. Display it once per import,
+regardless of the number of fields. Do not list field names, values or platforms.
+This includes documented fields unsupported by that client and undocumented keys.
+Unsupported fields are not imported, retained in storage or included in later exports.
+
+Schema `additionalProperties: true` permits reading future documents; it does not
+mean unknown fields should be retained. Validate structure first, then project the
+configuration onto the receiving client's supported fields. Preserve common supported
+fields, omitted-secret merge semantics, stable IDs and local order. Unsupported
+transports are still reported as skipped profiles; removing jump or SSH fields must
+never reinterpret a chain as a single HTTPS proxy.
+
+BrowserMegaProxy discards Android-specific TLS, DNS, SSH, per-app routing, Always-on
+and logging settings and presents the general warning. An Android client without
+browser-field support must similarly discard `browser` objects and show the same
+warning. Existing unmodified Android versions silently discard them; adding this
+review behavior is a consumer migration requirement.

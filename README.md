@@ -17,7 +17,7 @@ The reference Android implementation is `ConfigTransfer.kt` at commit
 
 ## Schema distribution
 
-Consumers vendor the schema and LICENSE, recording the source commit and SHA-256
+Consumers vendor the schemas and LICENSE, recording the source commit and SHA-256
 in a lock file. Tests read the committed copy; CI never downloads `main` implicitly.
 BrowserMegaProxy provides `npm run renew-config-schema` to explicitly fetch the latest
 `main`, or `npm run renew-config-schema -- --ref=<commit>` to pin a reviewed revision.
