@@ -120,3 +120,19 @@ ProxyList (one HTTPS URL per non-comment line with percent-encoded `user:passwor
 optional `title`/`cc` query parameters), and SuperProxy's supported subset (same list
 with first nonempty line `# superproxy:proxylist:v1`). SuperProxy certificate pins
 are not imported. These formats have no stable IDs and create new profiles.
+
+## Browser implementation limits
+
+Browser failover can use the common `failover` object. BrowserMegaProxy reacts to
+observable proxy connection/tunnel/certificate errors, tries candidates in order, and
+never switches to direct access when they are exhausted. HTTP status errors from an
+origin do not trigger failover. Exact socket/traffic-byte measurements are unavailable.
+
+FoxyProxy include/exclude URL rules are not part of the portable configuration.
+BrowserMegaProxy reports their omission in the import review before applying the
+connection profile to the whole browser. PAC entries are skipped.
+
+Without a `browser` block in an updated Android profile, BrowserMegaProxy preserves
+the existing local knock and domain exclusions. The current browser implementation
+checks canonical version 8 imports and exports with a standalone validator generated
+from the pinned schema; older versions are normalized by the legacy import parser.
