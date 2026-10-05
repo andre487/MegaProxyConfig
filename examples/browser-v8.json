@@ -30,6 +30,17 @@
   ],
   "browser": {
     "theme": "system",
-    "language": "auto"
+    "language": "auto",
+    "routing": {
+      "enabled": true,
+      "mode": "domains",
+      "domains": [
+        "example.com",
+        "*.example.org"
+      ],
+      "sites": [
+        "site.example.com"
+      ]
+    }
   }
 }

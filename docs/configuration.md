@@ -161,3 +161,51 @@ and logging settings and presents the general warning. An Android client without
 browser-field support must similarly discard `browser` objects and show the same
 warning. Existing unmodified Android versions silently discard them; adding this
 review behavior is a consumer migration requirement.
+
+## Selective browser proxy routing
+
+`browser.routing` is optional and browser-only. It does not change Android routing.
+Omitting it keeps the existing behavior: all eligible requests use the active proxy.
+
+| Field | Type / default | Meaning |
+| --- | --- | --- |
+| `enabled` | boolean, `false` | Enable selective routing. When false, all eligible requests use the active proxy. |
+| `mode` | `domains` or `tabs`, default `domains` | Destination-domain routing (Chromium and Firefox) or tab-based split proxy (Firefox only). |
+| `domains` | string array, default `[]` | Destination hostname patterns used in `domains` mode. |
+| `sites` | string array, default `[]` | Top-level site hostname patterns selecting tabs automatically in `tabs` mode. |
+
+The two lists are independent and survive mode switches. Each contains at most
+1,000 patterns, each at most 253 characters. Exact hostnames match only themselves.
+`*` matches zero or more characters, including dots: `*.example.com` matches
+subdomains but not `example.com`; `example.*` matches several suffixes. Matches
+cover the entire hostname and ignore case and a trailing dot. Wildcard patterns
+use ASCII DNS labels; literal internationalized hostnames are normalized to IDNA
+by the extension. Schemes, ports, paths and credentials are forbidden.
+An enabled mode with an empty list connects directly.
+
+In Firefox `tabs` mode, requests attributed to a selected tab use the proxy,
+including frames, scripts and resources on other domains. Top-level navigation
+and redirects re-evaluate the site's pattern. Requests without a tab connect
+directly. Firefox's popup can override an individual tab and reload it; these
+session-only choices last until the tab closes or routing settings change.
+Browser tab IDs and manual overrides are never exported.
+
+The popup can add the current hostname to the list for the current mode, enable
+selective routing and reload that tab. Previously opened connections are not
+migrated; reload affected tabs after changing routing settings. Local-network
+and profile bypass rules have priority in both modes. Required knock requests
+still use the proxy, and connection checks temporarily route their own traffic
+through the active proxy without changing the saved lists.
+
+Chromium has no tab-based routing UI. When importing a configuration whose
+`browser.routing.mode` is `tabs`, it **must show an explicit warning** that Firefox
+split proxy is unsupported in Chromium, ignore `sites`, switch to `domains`, and
+use the supplied `domains` and `enabled` values. It must not turn `sites` into
+proxy destination rules: that would change the meaning. An enabled empty domain
+list therefore connects directly. The imported/exported Chromium configuration
+contains the effective `domains` mode, not unsupported tab rules.
+
+Suggested English warning: "This configuration uses Firefox split proxy by tab,
+which Chromium does not support. Tab site rules will not be imported;
+destination-domain routing will be used instead. An empty domain list connects
+directly."

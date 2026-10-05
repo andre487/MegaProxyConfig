@@ -87,6 +87,9 @@
             "en",
             "ru"
           ]
+        },
+        "routing": {
+          "$ref": "#/$defs/browserRouting"
         }
       },
       "required": [],
@@ -464,6 +467,45 @@
             "auto",
             "challenge"
           ]
+        }
+      },
+      "required": [],
+      "additionalProperties": true
+    },
+    "browserRouting": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "domains",
+            "tabs"
+          ]
+        },
+        "domains": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 253,
+            "pattern": "^(?:[^\\s*/:@?#\\\\]+|[a-zA-Z0-9*](?:[a-zA-Z0-9.*-]*[a-zA-Z0-9*])?|\\[?(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}\\]?)$"
+          },
+          "maxItems": 1000,
+          "uniqueItems": true
+        },
+        "sites": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 253,
+            "pattern": "^(?:[^\\s*/:@?#\\\\]+|[a-zA-Z0-9*](?:[a-zA-Z0-9.*-]*[a-zA-Z0-9*])?|\\[?(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}\\]?)$"
+          },
+          "maxItems": 1000,
+          "uniqueItems": true
         }
       },
       "required": [],

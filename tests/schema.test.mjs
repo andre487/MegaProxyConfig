@@ -35,3 +35,24 @@ test('known platform fields, common requirements and jump chains are validated',
   config.profiles[0].proxy.jump = {host: 'jump.example', port: 443}
   assert.ok(shared(config), JSON.stringify(shared.errors))
 })
+
+test('selective routing is additive, validates both modes and rejects malformed fields', async () => {
+  const config = await read('examples/browser-v8.json')
+  for (const mode of ['domains', 'tabs']) {
+    config.browser.routing.mode = mode
+    assert.ok(shared(config), JSON.stringify(shared.errors))
+    assert.ok(android(config), JSON.stringify(android.errors))
+  }
+  for (const change of [
+    c => { c.browser.routing.mode = 'vpn' },
+    c => { c.browser.routing.enabled = 1 },
+    c => { c.browser.routing.domains = ['https://example.com'] },
+    c => { c.browser.routing.sites = ['example.com', 'example.com'] },
+    c => { c.browser.routing.domains = ['example.com:443'] },
+    c => { c.browser.routing.sites = 'example.com' }
+  ]) {
+    const invalid = structuredClone(config)
+    change(invalid)
+    assert.equal(shared(invalid), false)
+  }
+})
