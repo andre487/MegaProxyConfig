@@ -209,3 +209,10 @@ Suggested English warning: "This configuration uses Firefox split proxy by tab,
 which Chromium does not support. Tab site rules will not be imported;
 destination-domain routing will be used instead. An empty domain list connects
 directly."
+
+Chromium's PAC resolver has an additional platform restriction: localhost and
+link-local addresses always bypass the proxy, even when `bypassLocalNetworks` is
+false. Selective Chromium routing must describe this limitation in its UI and
+must not claim such traffic was proxied. Other local ranges can still be proxied.
+The ordinary, non-selective fixed-server mode can override the implicit bypass.
+See [Chromium proxy documentation](https://chromium.googlesource.com/chromium/src/+/HEAD/net/docs/proxy.md#overriding-the-implicit-bypass-rules).
