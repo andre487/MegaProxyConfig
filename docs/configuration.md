@@ -99,7 +99,8 @@ but known keys are strictly typed. Clients must discard unsupported platform fie
 warning described below. Current Android ignores
 unknown `browser` keys but drops them on its own export. Thus importing browser
 files into Android works, but browser fields will not round-trip through unmodified
-Android; preservation needs a future Android implementation update.
+Android. A future Android import review must add the general warning; unsupported
+fields are deliberately discarded rather than preserved.
 
 ## Import, merge and export
 
