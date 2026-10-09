@@ -21,7 +21,7 @@ that all profiles contain those keys. Never store real secrets in repository exa
 
 ## Proxy settings
 
-Supported portable `proxy.type` values are `HTTPS`, `HTTPS_JUMP`, `SSH`, `SSH_JUMP`, and `SOCKS5`.
+Supported portable `proxy.type` values are `HTTPS`, `HTTPS_JUMP`, `SSH`, `SSH_JUMP`, `SOCKS5`, and `MASQUE`.
 `host` contains a hostname or IP address, without scheme, path or port. Android's
 current decoder rejects colon-containing hosts (including IPv6 literals); the schema
 allows IP literals for consumers supporting them. For cross-platform exports use
@@ -57,6 +57,31 @@ username/password authentication; Chromium supports only SOCKS5 without credenti
 and must report this limitation when credentials are supplied. SOCKS5 usernames
 and passwords are limited to 255 UTF-8 bytes each. No HTTP Basic authorization
 header or HTTP proxy authentication dialog is used for SOCKS5.
+
+### MASQUE
+
+`proxy.type: "MASQUE"` is valid in the shared contract. Clients must recognize
+this value and either support it or explicitly report that MASQUE is unsupported
+or disabled. Import may skip these profiles after warning the user; clients must
+not silently reinterpret them as HTTPS. The current Android baseline does not
+accept MASQUE, so MASQUE configurations require a compatible client.
+
+The proxy host and port identify the HTTP/3 (QUIC) proxy endpoint. Optional profile
+`browser.masqueTemplate` specifies the CONNECT-UDP URI path template (maximum
+2,048 characters); its default is
+`/.well-known/masque/udp/{target_host}/{target_port}/`. It must start with a single
+`/`, contain both `{target_host}` and `{target_port}`, and contain no other template
+variables, whitespace, control characters, backslashes, or fragments. Consumers
+must validate these semantics beyond JSON Schema's string and length checks.
+
+BrowserMegaProxy exposes experimental MASQUE support only in Firefox 146+,
+disabled by default behind a local settings checkbox. The flag is not imported
+from configuration files. When disabled, MASQUE profiles are skipped with an
+explicit warning. CONNECT-TCP HTTP/HTTPS scenarios are tested; successful
+CONNECT-UDP interoperability with GOST is not yet confirmed. Username/password
+fields are currently disabled because the tested Firefox supplies the Basic
+header for CONNECT-TCP but omits it for CONNECT-UDP. Knock hosts are not used.
+A trusted TLS certificate and HTTP/3 support are required.
 
 ## Optional Android fields
 
@@ -98,6 +123,7 @@ Profile `browser` contains:
 |---|---|
 | `knockHost` | Hostname/IP without scheme, path or port; empty disables configuration |
 | `bypass` | Domain/IP exclusions, each domain also matches its subdomains |
+| `masqueTemplate` | Optional MASQUE CONNECT-UDP path template; see MASQUE above |
 | `authMode` | auto/challenge; retained for legacy imports; saved credentials in Firefox use immediate CONNECT authentication |
 
 Local-network bypass uses the shared `routing.bypassLocalNetworks` field. It defaults
