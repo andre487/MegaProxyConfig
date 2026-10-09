@@ -87,3 +87,13 @@ test('WebRTC and Firefox domain assignments are additive and validated', async (
     assert.equal(shared(invalid), false)
   }
 })
+
+test('SOCKS5 is valid in the shared contract but not in the current Android baseline', async () => {
+  const config = await read('examples/browser-v8.json')
+  config.profiles[0].proxy.type = 'SOCKS5'
+  config.profiles[0].proxy.port = 1080
+  assert.ok(shared(config), JSON.stringify(shared.errors))
+  assert.equal(android(config), false)
+  config.profiles[0].proxy.type = 'SOCKS4'
+  assert.equal(shared(config), false)
+})

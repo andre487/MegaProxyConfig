@@ -21,7 +21,7 @@ that all profiles contain those keys. Never store real secrets in repository exa
 
 ## Proxy settings
 
-Supported portable `proxy.type` values are `HTTPS`, `HTTPS_JUMP`, `SSH`, `SSH_JUMP`.
+Supported portable `proxy.type` values are `HTTPS`, `HTTPS_JUMP`, `SSH`, `SSH_JUMP`, and `SOCKS5`.
 `host` contains a hostname or IP address, without scheme, path or port. Android's
 current decoder rejects colon-containing hosts (including IPv6 literals); the schema
 allows IP literals for consumers supporting them. For cross-platform exports use
@@ -43,6 +43,20 @@ Never reinterpret a jump chain as a single proxy.
 HTTP is supported by the browser UI but not by current Android's type enum. An HTTP
 profile cannot be exported as an Android-compatible HTTPS profile. Consumers must
 reject that export explicitly; never silently change the protocol.
+
+SOCKS5 is a valid shared configuration protocol, even when a particular client does
+not implement it. Every client must recognize this value and either use SOCKS5 or
+display an explicit unsupported-protocol message. A client may skip incompatible
+profiles during import after informing the user; it must not silently discard them
+or reinterpret SOCKS5 as HTTP/HTTPS. The current Android version 8 baseline does
+not accept SOCKS5; its schema remains a record of that implementation. A shared
+SOCKS5 configuration therefore requires a client that supports it.
+
+BrowserMegaProxy supports SOCKS5 with proxy-side DNS resolution. Firefox supports
+username/password authentication; Chromium supports only SOCKS5 without credentials
+and must report this limitation when credentials are supplied. SOCKS5 usernames
+and passwords are limited to 255 UTF-8 bytes each. No HTTP Basic authorization
+header or HTTP proxy authentication dialog is used for SOCKS5.
 
 ## Optional Android fields
 

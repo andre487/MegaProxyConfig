@@ -2,7 +2,9 @@
 
 The portable configuration contract shared by AndroidMegaProxy and BrowserMegaProxy.
 JSON Schema uses draft 2020-12. This repository documents Android's current version 8
-format and adds optional browser fields without changing its version or existing keys.
+format and extends the shared contract with optional browser fields and SOCKS5.
+Clients must handle SOCKS5 or explicitly report that they do not support it. The
+Android baseline records its current implementation and does not accept SOCKS5.
 
 - [Format and import semantics](docs/configuration.md)
 - [Android version 8 baseline](schemas/android-v8.schema.json)
