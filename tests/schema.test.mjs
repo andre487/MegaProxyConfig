@@ -103,7 +103,7 @@ test('MASQUE is valid in the shared contract with an optional typed path templat
   const config = await read('examples/browser-v8.json')
   config.profiles[0].proxy.type = 'MASQUE'
   assert.ok(shared(config), JSON.stringify(shared.errors))
-  assert.equal(android(config), false)
+  assert.ok(android(config), JSON.stringify(android.errors))
   config.profiles[0].browser.masqueTemplate = '/custom/{target_host}/{target_port}/'
   assert.ok(shared(config), JSON.stringify(shared.errors))
   for (const value of [42, 'x'.repeat(2049)]) {

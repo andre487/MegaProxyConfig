@@ -63,8 +63,10 @@ header or HTTP proxy authentication dialog is used for SOCKS5.
 `proxy.type: "MASQUE"` is valid in the shared contract. Clients must recognize
 this value and either support it or explicitly report that MASQUE is unsupported
 or disabled. Import may skip these profiles after warning the user; clients must
-not silently reinterpret them as HTTPS. The current Android baseline does not
-accept MASQUE, so MASQUE configurations require a compatible client.
+not silently reinterpret them as HTTPS. The Android baseline accepts MASQUE. Android uses Basic proxy authentication
+for both CONNECT-TCP and CONNECT-UDP, supports browser QUIC fingerprints, and
+keeps DNS on the configured DoH provider. Browser-specific path templates are
+not applied by Android.
 
 The proxy host and port identify the HTTP/3 (QUIC) proxy endpoint. Optional profile
 `browser.masqueTemplate` specifies the CONNECT-UDP URI path template (maximum
