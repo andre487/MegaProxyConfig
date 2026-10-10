@@ -170,3 +170,12 @@ test('HTTPS HTTP/3 preference is optional, boolean and compatible with both sche
     assert.ok(validate(config), JSON.stringify(validate.errors))
   }
 })
+
+test('HTTPS Jump also preserves the optional HTTP/3 preference', async () => {
+  const config = await read('examples/android-v8.json')
+  const proxy = config.profiles.find(p => p.proxy.type === 'HTTPS').proxy
+  proxy.type = 'HTTPS_JUMP'
+  proxy.preferHttp3 = true
+  proxy.jump = { host: 'jump.example', port: 443, username: 'jump', password: 'synthetic' }
+  for (const validate of [android, shared]) assert.ok(validate(config), JSON.stringify(validate.errors))
+})
