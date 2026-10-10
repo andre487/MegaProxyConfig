@@ -83,8 +83,22 @@ For the example above, the request contains:
 ```http
 GET /team.json HTTP/1.1
 Host: configs.example.com
+X-MegaProxy-Client: browser_chromium
 Authorization: Basic cmVhZGVyOmV4YW1wbGU=
 ```
+
+Clients send `X-MegaProxy-Client` to identify the client implementation. The
+BrowserMegaProxy values are `browser_chromium` for Chromium-based browsers and
+`browser_firefox` for Firefox, including Firefox for Android. Use the same value
+on primary and backup requests, manual imports and automatic updates. Other
+clients should document their own stable identifier. This value identifies the
+implementation; it does not carry a per-installation or per-user identifier.
+
+Servers may select a compatible format or profile subset using this header and
+should provide a suitable default for clients omitting it. If the response varies
+by client ID, send `Vary: X-MegaProxy-Client` and scope conditional validators to
+the selected representation. The header is not an authentication mechanism;
+protected feeds still require their configured credentials.
 
 Protected endpoints authenticate every request, including conditional requests.
 An invalid or missing credential produces 401 with
@@ -162,7 +176,7 @@ bounds. A server should publish modest snapshots and replace files atomically.
 
 ETag/If-None-Match and Last-Modified/If-Modified-Since are optional optimizations.
 A client implementing them associates validators with a successfully validated,
-applied snapshot and its URL/authentication context. Do not accept 304 without
+applied snapshot and its URL/authentication/client-ID context. Do not accept 304 without
 such a snapshot, or save a validator for a failed import. Authenticate before
 returning 304; never serve a different user's cached configuration. Authenticated
 responses should use private cache policy. See
