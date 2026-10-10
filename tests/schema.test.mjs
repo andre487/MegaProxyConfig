@@ -13,6 +13,24 @@ test('Android baseline and additive browser fields remain compatible', async () 
     assert.ok(shared(config), JSON.stringify(shared.errors))
   }
 })
+test('mixed Android HTTPS and MASQUE retain separate custom TLS and QUIC JA3 fields', async () => {
+  const config = await read('examples/android-v8.json')
+  const masque = config.profiles.find(p => p.proxy.type === 'MASQUE')
+  assert.ok(config.profiles.some(p => p.proxy.type === 'HTTPS'))
+  assert.equal(config.tls.fingerprint, 'CUSTOM')
+  assert.equal(masque.tls.fingerprint, 'CUSTOM')
+  assert.notEqual(config.tls.customJa3, masque.tls.customJa3)
+  assert.ok(masque.tls.customJa3.split(',')[2].split('-').includes('57'))
+  assert.ok(!config.tls.customJa3.split(',')[2].split('-').includes('57'))
+  for (const validate of [android, shared]) {
+    assert.ok(validate(config), JSON.stringify(validate.errors))
+    for (const value of [42, 'x'.repeat(8193)]) {
+      const invalid = structuredClone(config)
+      invalid.profiles.find(p => p.proxy.type === 'MASQUE').tls.customJa3 = value
+      assert.equal(validate(invalid), false)
+    }
+  }
+})
 test('known platform fields, common requirements and jump chains are validated', async () => {
   const original = await read('examples/browser-v8.json')
   for (const change of [
@@ -103,7 +121,7 @@ test('MASQUE is valid in the shared contract with an optional typed path templat
   const config = await read('examples/browser-v8.json')
   config.profiles[0].proxy.type = 'MASQUE'
   assert.ok(shared(config), JSON.stringify(shared.errors))
-  assert.equal(android(config), false)
+  assert.ok(android(config), JSON.stringify(android.errors))
   config.profiles[0].browser.masqueTemplate = '/custom/{target_host}/{target_port}/'
   assert.ok(shared(config), JSON.stringify(shared.errors))
   for (const value of [42, 'x'.repeat(2049)]) {
