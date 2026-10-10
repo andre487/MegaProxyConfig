@@ -5,6 +5,8 @@ JSON Schema uses draft 2020-12. This repository documents Android's current vers
 format, including Android MASQUE alpha, and extends the shared contract with optional
 browser fields and SOCKS5. The Android example includes separate custom TLS/QUIC JA3
 values for HTTPS and MASQUE profiles.
+The optional root `subscription` field supports HTTPS configuration refresh with
+Basic Auth in clients implementing subscriptions, including BrowserMegaProxy.
 Clients must handle SOCKS5 or explicitly report that they do not support it. The
 Android baseline records its current implementation and does not accept SOCKS5.
 
