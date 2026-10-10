@@ -112,6 +112,12 @@ test('SOCKS5 is valid in both shared and Android contracts', async () => {
   config.profiles[0].proxy.port = 1080
   assert.ok(shared(config), JSON.stringify(shared.errors))
   assert.ok(android(config), JSON.stringify(android.errors))
+  config.profiles[0].proxy.username = 'user:with:colon'
+  assert.ok(shared(config), JSON.stringify(shared.errors))
+  assert.ok(android(config), JSON.stringify(android.errors))
+  config.profiles[0].proxy.type = 'HTTPS'
+  assert.equal(shared(config), false)
+  assert.equal(android(config), false)
   config.profiles[0].proxy.type = 'SOCKS4'
   assert.equal(shared(config), false)
 })
