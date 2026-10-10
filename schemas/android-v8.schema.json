@@ -231,6 +231,7 @@
           "then": {
             "properties": {
               "username": {
+                "type": "string",
                 "pattern": "^[^\\r\\n]*$"
               }
             }
@@ -238,6 +239,7 @@
           "else": {
             "properties": {
               "username": {
+                "type": "string",
                 "pattern": "^[^:\\r\\n]*$"
               }
             }
