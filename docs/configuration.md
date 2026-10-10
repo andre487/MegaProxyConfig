@@ -61,15 +61,28 @@ SOCKS5 is a valid shared configuration protocol, even when a particular client d
 not implement it. Every client must recognize this value and either use SOCKS5 or
 display an explicit unsupported-protocol message. A client may skip incompatible
 profiles during import after informing the user; it must not silently discard them
-or reinterpret SOCKS5 as HTTP/HTTPS. The current Android version 8 baseline does
-not accept SOCKS5; its schema remains a record of that implementation. A shared
-SOCKS5 configuration therefore requires a client that supports it.
+or reinterpret SOCKS5 as HTTP/HTTPS. The Android version 8 contract accepts SOCKS5; older Android builds without
+this implementation must report it as unsupported.
 
 BrowserMegaProxy supports SOCKS5 with proxy-side DNS resolution. Firefox supports
 username/password authentication; Chromium supports only SOCKS5 without credentials
 and must report this limitation when credentials are supplied. SOCKS5 usernames
 and passwords are limited to 255 UTF-8 bytes each. No HTTP Basic authorization
 header or HTTP proxy authentication dialog is used for SOCKS5.
+
+Android supports TCP CONNECT and UDP ASSOCIATE, on port 1080 by default. Leave
+both credentials empty for no authentication, or supply both username and password
+(1–255 UTF-8 bytes each). Supplying credentials requires RFC 1929 authentication;
+a server cannot downgrade this to an unauthenticated connection. SOCKS5 adds no
+encryption, certificate verification, TLS fingerprint or multiplexing. Application
+TLS and DNS-over-HTTPS retain their own encryption. Android sends DNS through its
+selected DoH provider over SOCKS5 TCP, and forwards other UDP through the relay
+returned by UDP ASSOCIATE. Relay replies must contain an IP address and a nonzero
+port; wildcard addresses use the already resolved proxy IP. A hostname relay is
+rejected without performing system DNS. Per-app routing, IPv6 policy, local-network
+bypass, profile failover and connection statistics still apply. The HTTP/3 preference
+and SSH authentication settings do not affect SOCKS5. No SOCKS5 Jump type is defined.
+ProxyList URLs use `socks5://host:1080` or `socks5://user:password@host:1080`.
 
 ### MASQUE
 
