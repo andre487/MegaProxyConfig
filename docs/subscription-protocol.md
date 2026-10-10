@@ -84,6 +84,7 @@ For the example above, the request contains:
 GET /team.json HTTP/1.1
 Host: configs.example.com
 X-MegaProxy-Client: browser_chromium
+X-MegaProxy-Version: 1.1.1
 Authorization: Basic cmVhZGVyOmV4YW1wbGU=
 ```
 
@@ -94,9 +95,14 @@ on primary and backup requests, manual imports and automatic updates. Other
 clients should document their own stable identifier. This value identifies the
 implementation; it does not carry a per-installation or per-user identifier.
 
-Servers may select a compatible format or profile subset using this header and
+Clients also send `X-MegaProxy-Version` with their installed application version.
+BrowserMegaProxy reads it from `runtime.getManifest().version`; it is the extension
+version, not the browser version or configuration schema version. Both headers
+are sent for each source and retry. They contain no per-installation identifier.
+
+Servers may select a compatible format or profile subset using these headers and
 should provide a suitable default for clients omitting it. If the response varies
-by client ID, send `Vary: X-MegaProxy-Client` and scope conditional validators to
+by client ID or version, send `Vary: X-MegaProxy-Client, X-MegaProxy-Version` and scope conditional validators to
 the selected representation. The header is not an authentication mechanism;
 protected feeds still require their configured credentials.
 
@@ -176,7 +182,7 @@ bounds. A server should publish modest snapshots and replace files atomically.
 
 ETag/If-None-Match and Last-Modified/If-Modified-Since are optional optimizations.
 A client implementing them associates validators with a successfully validated,
-applied snapshot and its URL/authentication/client-ID context. Do not accept 304 without
+applied snapshot and its URL/authentication/client-ID/client-version context. Do not accept 304 without
 such a snapshot, or save a validator for a failed import. Authenticate before
 returning 304; never serve a different user's cached configuration. Authenticated
 responses should use private cache policy. See
