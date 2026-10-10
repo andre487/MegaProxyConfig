@@ -457,7 +457,9 @@ entire chain falls back to HTTPS/TCP through the jump; there is no direct path
 to the exit. Authentication and certificate errors at either hop are terminal.
 
 Nested QUIC requires a usable outer path MTU in both directions. Android checks
-the path within the bounded optional probe and constrains inner QUIC packets
-to 1280 bytes, preserving the browser TLS/JA3 preset but adjusting padding and
-receive-MTU transport parameters for encapsulation. Firefox Jump falls back
+both directions within the bounded optional probe and derives the inner QUIC
+packet limit from the available outer budgets minus QUIC/CONNECT-UDP framing.
+It warms the exit's receive path before selection, preserving the browser TLS/JA3
+preset while adjusting padding and receive-MTU parameters for encapsulation.
+Firefox Jump falls back
 because its 1200-byte DATAGRAM limit cannot fit the required nested QUIC packets.
