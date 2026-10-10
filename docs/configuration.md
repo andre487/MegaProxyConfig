@@ -63,10 +63,26 @@ header or HTTP proxy authentication dialog is used for SOCKS5.
 `proxy.type: "MASQUE"` is valid in the shared contract. Clients must recognize
 this value and either support it or explicitly report that MASQUE is unsupported
 or disabled. Import may skip these profiles after warning the user; clients must
-not silently reinterpret them as HTTPS. The Android baseline accepts MASQUE. Android uses Basic proxy authentication
-for both CONNECT-TCP and CONNECT-UDP, supports browser QUIC fingerprints, and
-keeps DNS on the configured DoH provider. Browser-specific path templates are
-not applied by Android.
+not silently reinterpret them as HTTPS. The Android baseline accepts MASQUE;
+Android's implementation is alpha. It uses Basic proxy authentication for TCP
+CONNECT and CONNECT-UDP, supports browser QUIC fingerprints, and keeps DNS on the
+configured DoH provider. MASQUE is a standalone endpoint, not a jump-chain type.
+Browser-specific path templates are not applied by Android.
+
+Android selects the outer TLS/QUIC preset from document-level `tls.fingerprint`;
+DEFAULT resolves to CHROME_ANDROID. MASQUE supports CHROME_ANDROID,
+FIREFOX_ANDROID, RANDOMIZED and CUSTOM; unsupported presets must fail explicitly.
+These settings describe the connection to the proxy, not the fingerprint of the
+browser inside the tunnel. With CUSTOM, HTTPS uses document-level `tls.customJa3`,
+while MASQUE uses `profiles[].tls.customJa3`. The latter must be a QUIC-compatible
+JA3, including TLS 1.3 and the QUIC transport-parameters extension (57). Keep both
+strings separate in mixed HTTPS/MASQUE files and failover: Android must not replace
+a profile's QUIC JA3 with the global TLS JA3. Per-profile `tls.fingerprint` remains
+portable profile data but does not override Android's global preset selection.
+The mixed [Android example](../examples/android-v8.json) illustrates this layout.
+JSON Schema checks field types and lengths; consumers validate JA3 semantics and
+transport capabilities when connecting. Missing export secrets or incomplete
+CUSTOM fields may require user input before connection.
 
 The proxy host and port identify the HTTP/3 (QUIC) proxy endpoint. Optional profile
 `browser.masqueTemplate` specifies the CONNECT-UDP URI path template (maximum
@@ -100,7 +116,8 @@ These can occur at the document level:
 
 Profiles additionally support `tls`, `dns`, and `routing`.
 Profile `routing` adds `allowIpv6` (default false); the other routing keys match the
-document object. Android applies global routing/TLS/SSH settings when connecting.
+document object. Android applies global routing/TLS/SSH settings when connecting,
+except that MASQUE keeps its per-profile QUIC `tls.customJa3` as described above.
 
 TLS fingerprints: DEFAULT, CHROME_ANDROID, FIREFOX_ANDROID, EDGE_ANDROID, RANDOMIZED,
 SAMSUNG_INTERNET, YANDEX_BROWSER, CUSTOM. Some presets are unavailable in current
@@ -137,12 +154,10 @@ that workflow; credentials entered into the browser prompt are not readable by t
 extension and are not copied into its configuration.
 
 Platform objects are optional. Unknown keys are allowed for forward compatibility
-but known keys are strictly typed. Clients must discard unsupported platform fields after displaying the general import
-warning described below. Current Android ignores
-unknown `browser` keys but drops them on its own export. Thus importing browser
-files into Android works, but browser fields will not round-trip through unmodified
-Android. A future Android import review must add the general warning; unsupported
-fields are deliberately discarded rather than preserved.
+but known keys are strictly typed. Clients must discard unsupported platform fields
+after displaying the import notice described below. Android reports ignored browser
+settings and undocumented fields separately, at most once each per import. Browser
+fields are discarded and do not round-trip through Android.
 
 ## Import, merge and export
 
@@ -154,16 +169,19 @@ them for removal. Imported active/always-on IDs do not authorize automatic conne
 Review connection-affecting changes before applying an import.
 
 Export omits passwords and private keys by default. Including secrets requires an
-explicit user choice. Unsupported documented fields and undocumented fields produce one general
-warning and are discarded; neither is retained for export.
+explicit user choice. Unsupported documented fields and undocumented fields produce
+an import notice and are discarded; neither is retained for export. The Android
+notice categories are described below.
 Unsupported profiles may be skipped on import with a visible summary.
 
 Other Android input formats are not portable JSON: FoxyProxy JSON (`data` array;
 `https`/`ssl`, `hostname` or `address`, numeric/string port, `title`, `cc` and credentials),
-ProxyList (one HTTPS URL per non-comment line with percent-encoded `user:password`,
+ProxyList (one HTTPS or `masque://` URL per non-comment line with percent-encoded `user:password`,
 optional `title`/`cc` query parameters), and SuperProxy's supported subset (same list
 with first nonempty line `# superproxy:proxylist:v1`). SuperProxy certificate pins
 are not imported. These formats have no stable IDs and create new profiles.
+ProxyList carries endpoint/credential fields, not global TLS settings or custom JA3;
+use portable JSON to preserve separate HTTPS and MASQUE fingerprints.
 
 ## Browser implementation limits
 
@@ -184,12 +202,17 @@ from the pinned schema; older versions are normalized by the legacy import parse
 
 ## Unknown fields and import projection
 
-If a receiving client encounters any fields it does not import, show one general
+The reference browser behavior is: if a receiving client encounters any fields it
+does not import, show one general
 warning in the import review: **Configuration contains unknown fields.** The Russian
 UI text is **Конфигурация содержит неизвестные поля**. Display it once per import,
 regardless of the number of fields. Do not list field names, values or platforms.
-This includes documented fields unsupported by that client and undocumented keys.
-Unsupported fields are not imported, retained in storage or included in later exports.
+This includes documented fields unsupported by that browser client and undocumented
+keys. Android instead shows at most one notice for ignored browser settings and one
+for undocumented fields in its existing import result. It may name the browser
+settings category but must not reveal field names or values; a browser object with
+undocumented fields can produce both notices. Neither category requires an extra
+confirmation. Unsupported fields are not imported, retained in storage or included in later exports.
 
 Schema `additionalProperties: true` permits reading future documents; it does not
 mean unknown fields should be retained. Validate structure first, then project the
@@ -199,10 +222,10 @@ transports are still reported as skipped profiles; removing jump or SSH fields m
 never reinterpret a chain as a single HTTPS proxy.
 
 BrowserMegaProxy discards Android-specific TLS, DNS, SSH, per-app routing, Always-on
-and logging settings and presents the general warning. An Android client without
-browser-field support must similarly discard `browser` objects and show the same
-warning. Existing unmodified Android versions silently discard them; adding this
-review behavior is a consumer migration requirement.
+and logging settings and presents the general warning. Android discards `browser`
+objects and presents the browser-settings notice, adding the undocumented-fields
+notice only when needed. Older Android versions may silently discard these settings;
+that legacy behavior is not the current import-review contract.
 
 ## Selective browser proxy routing
 

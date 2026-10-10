@@ -2,7 +2,9 @@
 
 The portable configuration contract shared by AndroidMegaProxy and BrowserMegaProxy.
 JSON Schema uses draft 2020-12. This repository documents Android's current version 8
-format and extends the shared contract with optional browser fields and SOCKS5.
+format, including Android MASQUE alpha, and extends the shared contract with optional
+browser fields and SOCKS5. The Android example includes separate custom TLS/QUIC JA3
+values for HTTPS and MASQUE profiles.
 Clients must handle SOCKS5 or explicitly report that they do not support it. The
 Android baseline records its current implementation and does not accept SOCKS5.
 
@@ -13,9 +15,10 @@ Android baseline records its current implementation and does not accept SOCKS5.
 - [Browser example](examples/browser-v8.json)
 
 Run `npm ci && npm test` to validate examples and compatibility cases.
-The reference Android implementation is `ConfigTransfer.kt` at commit
+The original Android baseline is `ConfigTransfer.kt` at commit
 `8598dfd8b43cefc3744aa37c25cf54b2e813955e` in
-[AndroidMegaProxy](https://github.com/andre487/AndroidMegaProxy).
+[AndroidMegaProxy](https://github.com/andre487/AndroidMegaProxy). Android MASQUE
+integration is tracked in [PR #70](https://github.com/andre487/AndroidMegaProxy/pull/70).
 
 ## Schema distribution
 
