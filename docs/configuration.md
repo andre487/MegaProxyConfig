@@ -6,8 +6,8 @@ The document is a JSON object with `schema: "net.megaproxy487.config"`, `version
 and a nonempty `profiles` array (at most 1,000 profiles). The legacy schema identifier
 `dev.megaproxy.config` is accepted. Each profile needs a nonempty stable `id` (at
 most 256 characters) and `proxy` with `type`, `host`, and integer `port` (1–65535).
-IDs must be unique. Profile ID references must point to an existing profile or be
-null. JSON Schema validates structure; ID uniqueness by property and reference
+IDs must be unique. Applied profile ID references must point to an existing profile or be
+null; clients may ignore references in unsupported settings they discard. JSON Schema validates structure; ID uniqueness by property and reference
 integrity require consumer checks. Older Android versions accept versions 1–8,
 but this schema specifies canonical version 8 rather than permissive legacy input.
 
@@ -188,23 +188,30 @@ Other Android input formats are not portable JSON: FoxyProxy JSON (`data` array;
 ProxyList (one HTTPS or `masque://` URL per non-comment line with percent-encoded `user:password`,
 optional `title`/`cc` query parameters), and SuperProxy's supported subset (same list
 with first nonempty line `# superproxy:proxylist:v1`). SuperProxy certificate pins
-are not imported. These formats have no stable IDs and create new profiles.
+are not imported. These formats have no stable IDs and create new profiles on manual import.
+Subscription refreshes instead reuse unique local matches as described in the
+[distribution protocol](subscription-protocol.md).
 ProxyList carries endpoint/credential fields, not global TLS settings or custom JA3;
 use portable JSON to preserve separate HTTPS and MASQUE fingerprints.
 
 ## Browser implementation limits
 
-Browser failover can use the common `failover` object. BrowserMegaProxy reacts to
-observable proxy connection/tunnel/certificate errors, tries candidates in order, and
-never switches to direct access when they are exhausted. HTTP status errors from an
-origin do not trigger failover. Exact socket/traffic-byte measurements are unavailable.
+BrowserMegaProxy does not implement automatic proxy failover or per-domain
+profile assignments. The Android `failover` object is discarded with the general
+unknown-fields warning. Configuration-source failover through `subscription.fallbackUrls`
+is supported and is independent of proxy failover. Exact socket/traffic-byte
+measurements are unavailable.
 
 FoxyProxy include/exclude URL rules are not part of the portable configuration.
 BrowserMegaProxy reports their omission in the import review before applying the
 connection profile to the whole browser. PAC entries are skipped.
 
-Without a `browser` block in an updated Android profile, BrowserMegaProxy preserves
-the existing local knock and domain exclusions. Unsupported imported Android settings
+On manual import, without a `browser` block in an updated Android profile, BrowserMegaProxy preserves
+the existing local knock and domain exclusions. Subscription snapshots instead
+replace all supported settings and reset omitted browser preferences to defaults.
+Per-profile Android `routing`, including its local bypass flag, is not applied by
+the extension; only document-level `routing.bypassLocalNetworks` is supported.
+Unsupported imported Android settings
 are discarded rather than stored in the browser. The current browser implementation
 checks canonical version 8 imports and exports with a standalone validator generated
 from the pinned schema; older versions are normalized by the legacy import parser.
@@ -247,6 +254,19 @@ Omitting it keeps the existing behavior: all eligible requests use the active pr
 | `mode` | `domains` or `tabs`, default `domains` | Destination-domain routing (Chromium and Firefox) or tab-based split proxy (Firefox only). |
 | `domains` | string array, default `[]` | Destination hostname patterns used in `domains` mode. |
 | `sites` | string array, default `[]` | Top-level site hostname patterns selecting tabs automatically in `tabs` mode. |
+
+`browser.routing.strategy` optionally selects `manual`, `lists` or `tabs`.
+`manual` uses manual destination patterns; `lists` uses domain-list subscriptions;
+`tabs` uses Firefox tab-site patterns and site subscriptions. It overrides `mode`:
+`tabs` selects tab routing, the other values select destination routing. Inactive
+lists are retained for later switches. Without a strategy, the client derives it
+from `mode` and the configured lists.
+
+Legacy `profiles` and `failover` values remain valid in the schema but are not
+implemented by current BrowserMegaProxy. Both produce the general unknown-fields
+warning and normalize to `manual`; `failover` additionally disables selective
+routing. They do not authorize switching proxies. Chromium downgrades tab routing
+with its explicit split-proxy warning.
 
 The two lists are independent and survive mode switches. Each contains at most
 1,000 patterns, each at most 253 characters. In destination-domain mode, exact hostnames match only themselves. In Firefox
@@ -307,7 +327,9 @@ addresses, CIDRs, URLs and invalid lines are ignored.
 | `autoUpdate` | `true` | Refresh daily while the browser is running; retry failures hourly. |
 | `throughProxy` | `false` | Fetch lists and popularity data through the active MegaProxy profile. Without an active profile this option fails, without direct fallback. |
 
-The supported IDs are enumerated in the JSON schema. Sources are selected
+Source IDs match `[a-z0-9][a-z0-9_-]{0,63}`, with at most 64 unique IDs per mode.
+The extension resolves them through its bundled/refreshed catalog; valid IDs
+absent from the catalog remain selected but cannot supply a list until available. Sources are selected
 independently for the two modes; selecting a source does not enable selective
 routing automatically. Save preferences before using the manual update button.
 A change in subscriptions triggers an update when auto-update is enabled. With
@@ -373,22 +395,12 @@ to true; false matches only the exact hostname. Normalize international hostname
 to ASCII. Reject duplicate normalized domains and missing profile references.
 The reserved profile ID `DIRECT` means an explicit direct rule.
 
-Assignments apply when selective routing is enabled. In `domains` mode both
-Chromium and Firefox choose the profile by each request's destination hostname.
-In Firefox `tabs` mode the top-level tab hostname chooses the profile for all
-its attributed requests, including third-party resources. The longest matching
-domain wins. Local-network and selected-profile bypass rules take precedence.
-A manual DIRECT tab override takes precedence; a manual proxy override uses the
-global profile. Unassigned selected destinations or tabs use the global profile.
-A plain hostname in the split-proxy `sites` list includes subdomains.
-Disconnect, explicit global Direct and System modes disable assignments.
-
-Chromium must warn and discard assignments when importing a Firefox `tabs`
-configuration. It accepts assignments in `domains` mode; it must not reinterpret
-tab assignments as destination rules. Remove assignments when their referenced
-profile is deleted, except `DIRECT`. Assigned-profile failures must not switch
-the global profile or fall back to DIRECT. Older clients may ignore new optional
-fields or warn according to their supported feature set. Android ignores the
+These fields are retained in the shared schema for compatibility with older
+configurations. Current BrowserMegaProxy validates their shape, discards all
+assignments and shows the general unknown-fields warning in both browsers. It
+does not route individual domains through independently assigned profiles. The
+unsupported assignments are not retained in storage or exported. References in
+ignored assignments do not select or connect profiles. Android ignores the
 browser routing block.
 
 ## WebRTC privacy preference
@@ -423,5 +435,8 @@ snapshots; omitted passwords preserve existing local credentials.
 
 URL import downloads a configuration once using an HTTP(S) URL without embedded
 credentials, under the current routing rules. Enforce a 1 MiB streaming limit and
-a timeout; validate through the same parser and schema as file import. Show the
+a timeout; optional Basic Auth requires HTTPS, rejects redirects and treats either
+missing credential as empty when the other is present. URL imports send the client
+and application-version headers described in the [distribution protocol](subscription-protocol.md).
+Validate through the same parser and schema as file import. Show the
 same import review and compatibility warnings before applying any changes.

@@ -39,7 +39,9 @@ fragment, at most 2,048 characters. `intervalMinutes` is an integer from 1 throu
 `username` and `password` are separate from proxy credentials, at most 1,024
 characters each. A username cannot contain a colon or control characters; a
 password cannot contain control characters. URL and credential semantics require
-consumer checks in addition to JSON Schema validation.
+consumer checks in addition to JSON Schema validation. Unknown subscription keys
+follow the ordinary import policy: ignore and discard them with one general
+unknown-fields warning; known keys remain strictly typed.
 
 Optional `fallbackUrls` adds up to seven backup HTTPS URLs. Every URL follows the
 same validation rules; reject duplicate normalized URLs, including the primary.

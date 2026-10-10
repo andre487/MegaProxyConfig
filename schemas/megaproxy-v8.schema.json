@@ -568,6 +568,16 @@
             },
             "additionalProperties": true
           }
+        },
+        "strategy": {
+          "type": "string",
+          "enum": [
+            "manual",
+            "lists",
+            "profiles",
+            "tabs",
+            "failover"
+          ]
         }
       },
       "required": [],
@@ -580,68 +590,18 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": [
-              "russia_inside",
-              "russia_outside",
-              "ukraine_inside",
-              "geoblock",
-              "block",
-              "porn",
-              "news",
-              "anime",
-              "hodca",
-              "youtube",
-              "discord",
-              "meta",
-              "twitter",
-              "telegram",
-              "tiktok",
-              "hdrezka",
-              "google_ai",
-              "google_play",
-              "roblox",
-              "cloudflare",
-              "cloudfront",
-              "digitalocean",
-              "hetzner",
-              "ovh"
-            ]
+            "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
           },
-          "maxItems": 24,
+          "maxItems": 64,
           "uniqueItems": true
         },
         "siteSources": {
           "type": "array",
           "items": {
             "type": "string",
-            "enum": [
-              "russia_inside",
-              "russia_outside",
-              "ukraine_inside",
-              "geoblock",
-              "block",
-              "porn",
-              "news",
-              "anime",
-              "hodca",
-              "youtube",
-              "discord",
-              "meta",
-              "twitter",
-              "telegram",
-              "tiktok",
-              "hdrezka",
-              "google_ai",
-              "google_play",
-              "roblox",
-              "cloudflare",
-              "cloudfront",
-              "digitalocean",
-              "hetzner",
-              "ovh"
-            ]
+            "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$"
           },
-          "maxItems": 24,
+          "maxItems": 64,
           "uniqueItems": true
         },
         "autoUpdate": {
@@ -692,7 +652,7 @@
       "required": [
         "url"
       ],
-      "additionalProperties": false
+      "additionalProperties": true
     }
   }
 }
