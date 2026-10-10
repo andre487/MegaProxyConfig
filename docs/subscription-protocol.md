@@ -39,7 +39,9 @@ fragment, at most 2,048 characters. `intervalMinutes` is an integer from 1 throu
 `username` and `password` are separate from proxy credentials, at most 1,024
 characters each. A username cannot contain a colon or control characters; a
 password cannot contain control characters. URL and credential semantics require
-consumer checks in addition to JSON Schema validation.
+consumer checks in addition to JSON Schema validation. Unknown subscription keys
+follow the ordinary import policy: ignore and discard them with one general
+unknown-fields warning; known keys remain strictly typed.
 
 Optional `fallbackUrls` adds up to seven backup HTTPS URLs. Every URL follows the
 same validation rules; reject duplicate normalized URLs, including the primary.
@@ -52,7 +54,8 @@ the primary again, allowing recovery without editing the subscription.
 The Basic Auth credential pair is shared by all explicitly configured sources.
 Only list endpoints trusted to receive that pair. Redirects and subscription
 settings inside downloaded documents cannot add credential recipients. Pause
-applies to the whole subscription. Record which source supplied a successful
+disables scheduled checks for the whole subscription. **Update now** still performs
+one refresh while paused, without enabling automatic updates. Record which source supplied a successful
 snapshot and show failures when all sources fail; keep the previous snapshot
 in that case. Failover selects a configuration source, not an active proxy.
 
@@ -146,8 +149,12 @@ restart. Provide pause, manual refresh, last success, successful source and visi
 
 Replace subscription-owned profiles and remove those absent from the next valid
 snapshot. Keep separately added profiles. Preserve local connection mode and the
-selected profile while it still exists; never connect a downloaded active profile
-silently. Prefer stable MegaProxy IDs and ZeroOmega names. Without stable IDs,
+selected profile while it still exists. If that selected profile disappears, use
+the downloaded `activeProfileId` as a preferred replacement when it names an
+importable profile, otherwise select the first importable profile in snapshot
+order. The field already exists in version 8; no new preference field is needed.
+Do not switch away from a surviving local selection or silently leave Direct/System.
+Importing the initial bootstrap does not authorize automatic connection. Prefer stable MegaProxy IDs and ZeroOmega names. Without stable IDs,
 BrowserMegaProxy reuses a uniquely matching name, then a unique type/host/port
 endpoint; ambiguous or completely changed profiles receive new local IDs.
 
@@ -160,6 +167,79 @@ content applies. If no usable profiles remain, preserve the previous snapshot.
 Validate and apply atomically; persistence or native proxy-setting failures roll
 back the update. Failed updates must not remove working profiles or disconnect
 an otherwise unchanged active connection.
+
+## Browser update algorithm
+
+BrowserMegaProxy applies the following algorithm to scheduled configuration checks
+and the **Update now** action in its settings and popup:
+
+1. Keep the persisted subscription definition and previous working state. A manual
+   refresh may run while paused; scheduled checks may not. Download sources in order
+   under the existing timeout, size, authentication and redirect rules.
+2. Parse with the ordinary importer. Validate known fields, supported transports
+   and canonical profile references. Discard unknown/unsupported fields with the
+   same compatibility warnings as manual import. A malformed or wholly unsupported
+   snapshot fails this source and leaves the previous state intact.
+3. Reconcile subscription-owned profiles using stable IDs, or the documented unique
+   matching rules for legacy formats. Preserve separately added profiles; remove
+   only absent profiles owned by this subscription.
+4. Replace settings represented by the format. Keep the locally configured
+   subscription URLs, authentication, interval and pause state. Reset omitted
+   supported MegaProxy browser preferences according to snapshot semantics.
+5. Preserve the local selected profile if it survives, regardless of a different
+   downloaded `activeProfileId`. If a previously selected profile disappears, choose
+   the importable downloaded `activeProfileId`, then the first importable snapshot
+   profile, then the first remaining local profile. The latter is only a defensive
+   fallback: empty/wholly unsupported snapshots must already have failed validation.
+   With no profile available, retain no selection. Do not connect automatically if
+   there was no previous selection; preserve the local Proxy/Direct/System mode.
+6. Compare the previous and new effective connection settings. This includes the
+   selected profile ID, protocol, endpoint, authentication, knock host, exclusions
+   and MASQUE template, local-network bypass and the active routing mode/patterns.
+   Name, color, country and inactive-profile edits do not require a connection notice.
+7. Apply the new native proxy/privacy settings and persist the new configuration
+   as one transaction. Failure rolls back the configuration and native settings;
+   it must not mark a failed snapshot as successful or emit a success notice.
+8. Restart authentication/knock preparation when the selected proxy or credentials
+   changed, cancel obsolete authentication dialogs, and invalidate connection-check
+   results when effective connection settings changed. Retain saved routing choices.
+9. When a previously active connection changed, persist a local connection-update
+   notice. Show it in popup/settings and mark the toolbar with `!`. Optionally show
+   a system notification through the browser's notifications API, only with an
+   explicitly granted optional permission. Notification failure must not roll back
+   or block an otherwise successful configuration update. Include no credentials
+   or configuration body in notices. Identical effective settings do not notify.
+10. Store last success, import warnings and successful source, then stop source
+    failover. Schedule the next check only when automatic checks remain enabled.
+    If every source fails, retain the working state and show the download/import
+    failure for the next scheduled or manual retry.
+
+Firefox reads the current state in `proxy.onRequest` for subsequent requests, so
+profile and routing changes are used without restarting the extension or browser.
+Existing streams and connections are not migrated: reload affected pages. See
+[Firefox proxy.onRequest](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/proxy/onRequest).
+
+Chromium applies new native proxy/PAC settings immediately. The extension API does
+not provide a general command to migrate or close every established browser
+connection or reset all native proxy authentication state. BrowserMegaProxy therefore
+asks users to restart the browser to ensure all open connections use the updated
+configuration; it does not claim that new connections must wait for that restart.
+See the [Chromium proxy API](https://developer.chrome.com/docs/extensions/reference/api/proxy)
+and [notifications API](https://developer.chrome.com/docs/extensions/reference/api/notifications).
+The notice can be acknowledged and is cleared at browser startup; service-worker
+suspension/restart alone does not acknowledge it. Notification permission and local
+notice state are not imported, exported or synchronized through the config contract.
+
+The same effective-settings comparison applies when Podkop lists refresh. Download
+and validate lists first, compute the rules for the active routing mode/strategy,
+apply native settings and persist the new snapshot, then invalidate checks and notify
+if those rules changed while a proxy was active. A catalog-only refresh, identical
+lists, inactive routing lists or Direct/System do not produce a connection notice.
+A failed list/native-setting/persistence update retains the working list snapshot
+and reports its failure. Temporary routing used to download lists must be restored
+in all paths and is not itself a user configuration change. Legacy Firefox tab routing without an explicit strategy combines downloaded
+`siteSources` and manual site patterns. Explicit `tabs` remains a manual strategy
+and does not download or activate those inactive subscription sources.
 
 ## HTTP errors and optional conditional downloads
 

@@ -82,7 +82,7 @@ test('subscriptions are optional and platform-compatible with validated catalog 
   for (const change of [
     c => { c.browser.routing.subscriptions.throughProxy = 'yes' },
     c => { c.browser.routing.subscriptions.autoUpdate = 1 },
-    c => { c.browser.routing.subscriptions.domainSources = ['missing'] },
+    c => { c.browser.routing.subscriptions.domainSources = ['../invalid'] },
     c => { c.browser.routing.subscriptions.siteSources = ['youtube', 'youtube'] }
   ]) {
     const invalid = structuredClone(config)
@@ -135,7 +135,7 @@ test('root configuration subscriptions validate without changing Android baselin
   config.subscription = { url: 'https://configs.example.com/MegaProxy.json', username: 'subscriber', password: 'example', fallbackUrls: ['https://backup.example.com/config.json'], intervalMinutes: 15, enabled: true }
   assert.ok(shared(config), JSON.stringify(shared.errors))
   assert.ok(android(config), JSON.stringify(android.errors))
-  for (const subscription of [null, { url: 'https://configs.example.com/MegaProxy.json' }]) {
+  for (const subscription of [null, { url: 'https://configs.example.com/MegaProxy.json' }, { url: 'https://configs.example.com/', future: true }]) {
     assert.ok(shared({ ...config, subscription }), JSON.stringify(shared.errors))
   }
   for (const subscription of [
@@ -145,7 +145,6 @@ test('root configuration subscriptions validate without changing Android baselin
     { url: 'https://configs.example.com/', intervalMinutes: 0 },
     { url: 'https://configs.example.com/', intervalMinutes: 10081 },
     { url: 'https://configs.example.com/', enabled: 'yes' },
-    { url: 'https://configs.example.com/', token: 'unknown' },
     { url: 'https://configs.example.com/', fallbackUrls: 'https://backup.example.com/' },
     { url: 'https://configs.example.com/', fallbackUrls: ['http://backup.example.com/'] },
     { url: 'https://configs.example.com/', fallbackUrls: ['https://backup.example.com/', 'https://backup.example.com/'] },
@@ -178,4 +177,18 @@ test('HTTPS Jump also preserves the optional HTTP/3 preference', async () => {
   proxy.preferHttp3 = true
   proxy.jump = { host: 'jump.example', port: 443, username: 'jump', password: 'synthetic' }
   for (const validate of [android, shared]) assert.ok(validate(config), JSON.stringify(validate.errors))
+})
+
+test('dynamic list IDs and browser routing strategies share the browser contract', async () => {
+  const config = await read('examples/browser-v8.json')
+  config.browser.routing.subscriptions.domainSources = ['future_service', 'google_meet']
+  for (const strategy of ['manual', 'lists', 'profiles', 'tabs', 'failover']) {
+    config.browser.routing.strategy = strategy
+    assert.ok(shared(config), JSON.stringify(shared.errors))
+  }
+  config.browser.routing.strategy = 'unknown'
+  assert.equal(shared(config), false)
+  delete config.browser.routing.strategy
+  config.browser.routing.subscriptions.domainSources = Array.from({ length: 65 }, (_, i) => `source_${i}`)
+  assert.equal(shared(config), false)
 })
