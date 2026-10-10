@@ -152,6 +152,32 @@ test('root configuration subscriptions validate without changing Android baselin
   ]) assert.equal(shared({ ...config, subscription }), false)
 })
 
+test('HTTPS HTTP/3 preference is optional, boolean and compatible with both schemas', async () => {
+  const config = await read('examples/android-v8.json')
+  const proxy = config.profiles.find(p => p.proxy.type === 'HTTPS').proxy
+  assert.equal(proxy.preferHttp3, true)
+  for (const validate of [android, shared]) {
+    for (const value of [false, true]) {
+      proxy.preferHttp3 = value
+      assert.ok(validate(config), JSON.stringify(validate.errors))
+    }
+    for (const value of ['true', 1, null]) {
+      proxy.preferHttp3 = value
+      assert.equal(validate(config), false)
+    }
+    delete proxy.preferHttp3
+    assert.ok(validate(config), JSON.stringify(validate.errors))
+  }
+})
+
+test('HTTPS Jump also preserves the optional HTTP/3 preference', async () => {
+  const config = await read('examples/android-v8.json')
+  const proxy = config.profiles.find(p => p.proxy.type === 'HTTPS').proxy
+  proxy.type = 'HTTPS_JUMP'
+  proxy.preferHttp3 = true
+  proxy.jump = { host: 'jump.example', port: 443, username: 'jump', password: 'synthetic' }
+  for (const validate of [android, shared]) assert.ok(validate(config), JSON.stringify(validate.errors))
+})
 
 test('dynamic list IDs and browser routing strategies share the browser contract', async () => {
   const config = await read('examples/browser-v8.json')

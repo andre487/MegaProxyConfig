@@ -450,3 +450,45 @@ missing credential as empty when the other is present. URL imports send the clie
 and application-version headers described in the [distribution protocol](subscription-protocol.md).
 Validate through the same parser and schema as file import. Show the
 same import review and compatibility warnings before applying any changes.
+
+### Optional HTTP/3 preference
+
+`profiles[].proxy.preferHttp3` is an optional boolean, default `false`. Android
+exposes it as “Prefer HTTP/3 α” on `HTTPS` and `HTTPS_JUMP` profiles. It tries MASQUE on
+the same hostname and numeric UDP port, with the profile credentials and
+certificate policy. The server must provide separate TCP HTTPS and UDP MASQUE
+listeners. HTTP/3 requires MASQUE datagrams and Extended CONNECT settings.
+
+If QUIC is unavailable, settings are unsupported, or the configured fingerprint
+is unavailable for QUIC, Android selects ordinary HTTPS (HTTP/2 or HTTP/1.1).
+Certificate validation, authentication, socket protection and unknown errors
+remain terminal, including access-denied responses. CONNECT-UDP 404/405/501 and
+a missing Capsule-Protocol header allow HTTPS fallback. The optional probe is
+bounded to three seconds. Selection occurs once per session; existing connections are
+never transferred between transports. HTTPS fallback blocks ordinary UDP; DNS
+continues through DoH. The app shows the selected transport and fallback warning.
+
+The preference is ignored for other types; it does not
+change the explicit `MASQUE` type, which requires HTTP/3 and never falls back.
+HTTPS uses the document-level TLS/JA3 settings for both attempts. A custom JA3
+that cannot represent QUIC uses HTTPS; separate MASQUE profiles retain their own
+QUIC-compatible JA3. JSON preserves the preference; plain proxy URLs do not.
+Older consumers may ignore this additive field.
+
+For `HTTPS_JUMP`, both nodes must offer HTTPS/TCP and MASQUE/UDP on the same
+numeric port. QUIC to the exit is encapsulated in CONNECT-UDP through the jump;
+the exit hostname is resolved by the jump, never directly by Android. Each
+hop uses its own credentials and certificate policy, including the existing
+shared-authentication option. If either hop lacks the required support, the
+entire chain falls back to HTTPS/TCP through the jump; there is no direct path
+to the exit. Authentication and certificate errors at either hop are terminal.
+
+Nested QUIC requires a usable outer path MTU in both directions. Android checks
+both directions within the bounded optional probe and derives the inner QUIC
+packet limit from the available outer budgets minus QUIC/CONNECT-UDP framing.
+It warms the exit's receive path before selection, accounting for PMTU convergence
+and the server's conservative DATAGRAM budget. A confirmation round trip follows
+the probe ACK window so initial browser UDP replies fit too. The browser TLS/JA3
+preset is preserved while padding and receive-MTU parameters adapt to encapsulation.
+Firefox Jump falls back
+because its 1200-byte DATAGRAM limit cannot fit the required nested QUIC packets.
