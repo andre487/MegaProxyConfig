@@ -8,7 +8,7 @@ values for HTTPS and MASQUE profiles.
 The optional root `subscription` field supports HTTPS configuration refresh with
 Basic Auth and ordered source failover in clients implementing subscriptions, including BrowserMegaProxy.
 Clients must handle SOCKS5 or explicitly report that they do not support it. The
-Android baseline records its current implementation and does not accept SOCKS5.
+Android baseline accepts SOCKS5, including optional authentication and UDP ASSOCIATE.
 
 - [Format and import semantics](docs/configuration.md)
 - [HTTPS configuration distribution protocol](docs/subscription-protocol.md)
