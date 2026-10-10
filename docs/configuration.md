@@ -425,3 +425,25 @@ URL import downloads a configuration once using an HTTP(S) URL without embedded
 credentials, under the current routing rules. Enforce a 1 MiB streaming limit and
 a timeout; validate through the same parser and schema as file import. Show the
 same import review and compatibility warnings before applying any changes.
+
+### Optional HTTP/3 preference
+
+`profiles[].proxy.preferHttp3` is an optional boolean, default `false`. Android
+exposes it as “Prefer HTTP/3 α” on direct `HTTPS` profiles. It tries MASQUE on
+the same hostname and numeric UDP port, with the profile credentials and
+certificate policy. The server must provide separate TCP HTTPS and UDP MASQUE
+listeners. HTTP/3 requires MASQUE datagrams and Extended CONNECT settings.
+
+If QUIC is unavailable, settings are unsupported, or the configured fingerprint
+is unavailable for QUIC, Android selects ordinary HTTPS (HTTP/2 or HTTP/1.1).
+Certificate validation, authentication, socket protection and unknown errors
+remain terminal. Selection occurs once per session; existing connections are
+never transferred between transports. HTTPS fallback blocks ordinary UDP; DNS
+continues through DoH. The app shows the selected transport and fallback warning.
+
+The preference is ignored for other types, including `HTTPS_JUMP`; it does not
+change the explicit `MASQUE` type, which requires HTTP/3 and never falls back.
+HTTPS uses the document-level TLS/JA3 settings for both attempts. A custom JA3
+that cannot represent QUIC uses HTTPS; separate MASQUE profiles retain their own
+QUIC-compatible JA3. JSON preserves the preference; plain proxy URLs do not.
+Older consumers may ignore this additive field.

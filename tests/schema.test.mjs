@@ -152,3 +152,21 @@ test('root configuration subscriptions validate without changing Android baselin
     { url: 'https://configs.example.com/', fallbackUrls: Array.from({ length: 8 }, (_, i) => `https://backup${i}.example.com/`) }
   ]) assert.equal(shared({ ...config, subscription }), false)
 })
+
+test('HTTPS HTTP/3 preference is optional, boolean and compatible with both schemas', async () => {
+  const config = await read('examples/android-v8.json')
+  const proxy = config.profiles.find(p => p.proxy.type === 'HTTPS').proxy
+  assert.equal(proxy.preferHttp3, true)
+  for (const validate of [android, shared]) {
+    for (const value of [false, true]) {
+      proxy.preferHttp3 = value
+      assert.ok(validate(config), JSON.stringify(validate.errors))
+    }
+    for (const value of ['true', 1, null]) {
+      proxy.preferHttp3 = value
+      assert.equal(validate(config), false)
+    }
+    delete proxy.preferHttp3
+    assert.ok(validate(config), JSON.stringify(validate.errors))
+  }
+})
