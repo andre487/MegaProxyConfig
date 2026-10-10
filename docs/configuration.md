@@ -15,7 +15,11 @@ but this schema specifies canonical version 8 rather than permissive legacy inpu
 Android palette; renderers wrap it into their palette. `countryCode` is empty or
 an uppercase ISO-style two-letter code. Array order is profile display order.
 
-`activeProfileId` selects a profile; import must not silently connect it.
+`activeProfileId` records the selected profile. Manual import must not silently
+connect it. During subscription updates it is also a preferred replacement if the
+previously selected local profile disappears; a surviving local selection takes
+precedence. Preserve Direct/System mode. See the
+[browser update algorithm](subscription-protocol.md#browser-update-algorithm).
 `passwordsIncluded` and `privateKeysIncluded` describe export choices, not requirements
 that all profiles contain those keys. Never store real secrets in repository examples.
 
@@ -257,7 +261,9 @@ Omitting it keeps the existing behavior: all eligible requests use the active pr
 
 `browser.routing.strategy` optionally selects `manual`, `lists` or `tabs`.
 `manual` uses manual destination patterns; `lists` uses domain-list subscriptions;
-`tabs` uses Firefox tab-site patterns and site subscriptions. It overrides `mode`:
+`tabs` uses Firefox manual tab-site patterns. Explicit strategies are exclusive:
+site subscriptions remain inactive with `tabs`; legacy tab routing without a
+`strategy` combines manual sites and selected `siteSources`. It overrides `mode`:
 `tabs` selects tab routing, the other values select destination routing. Inactive
 lists are retained for later switches. Without a strategy, the client derives it
 from `mode` and the configured lists.
@@ -333,7 +339,11 @@ absent from the catalog remain selected but cannot supply a list until available
 independently for the two modes; selecting a source does not enable selective
 routing automatically. Save preferences before using the manual update button.
 A change in subscriptions triggers an update when auto-update is enabled. With
-auto-update disabled, use the manual update button after import or source changes.
+auto-update disabled, use the manual update button after import or source changes. When successfully updated
+lists change the effective rules of an active connection, show the connection-update
+notice described in the [browser update algorithm](subscription-protocol.md#browser-update-algorithm).
+Legacy Firefox tab routing without an explicit strategy may also use `siteSources`;
+explicit `tabs` keeps automatic site lists inactive.
 
 Normalize DNS names to lowercase IDNA and remove trailing dots. Generalize each
 listed domain to a single `**.domain` rule covering itself and all subdomains.
