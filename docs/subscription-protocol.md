@@ -17,6 +17,7 @@ property once. Subsequent background updates use these persisted settings:
   "version": 8,
   "subscription": {
     "url": "https://configs.example.com/team.json",
+    "fallbackUrls": ["https://backup.example.com/team.json"],
     "username": "reader",
     "password": "example",
     "intervalMinutes": 60,
@@ -39,6 +40,21 @@ fragment, at most 2,048 characters. `intervalMinutes` is an integer from 1 throu
 characters each. A username cannot contain a colon or control characters; a
 password cannot contain control characters. URL and credential semantics require
 consumer checks in addition to JSON Schema validation.
+
+Optional `fallbackUrls` adds up to seven backup HTTPS URLs. Every URL follows the
+same validation rules; reject duplicate normalized URLs, including the primary.
+On each refresh, start with `url`, then try backups in their configured order if
+downloading, validating or applying the earlier snapshot fails. Stop at the first
+successful import, including imports with supported-format warnings. Do not fetch
+or combine remaining sources. The next scheduled or manual refresh starts with
+the primary again, allowing recovery without editing the subscription.
+
+The Basic Auth credential pair is shared by all explicitly configured sources.
+Only list endpoints trusted to receive that pair. Redirects and subscription
+settings inside downloaded documents cannot add credential recipients. Pause
+applies to the whole subscription. Record which source supplied a successful
+snapshot and show failures when all sources fail; keep the previous snapshot
+in that case. Failover selects a configuration source, not an active proxy.
 
 A missing `subscription` in a manual import preserves the existing subscription;
 explicit null removes it. An omitted password preserves the saved password only
@@ -83,7 +99,7 @@ A successful response is 200 with a complete UTF-8 snapshot. MegaProxy version 8
 JSON is the canonical representation, served as `application/json`. The snapshot
 must pass schema, unique-ID, reference and client-capability checks. It need not
 repeat `subscription`; downloaded subscription settings must not silently replace
-the locally configured URL, credentials or enabled flag.
+the locally configured URL list, credentials or enabled flag.
 
 Clients may additionally accept formats supported by their manual importer. No
 extra envelope or conversion API is required: use the existing format's body and
@@ -106,7 +122,7 @@ snapshots are failures, not requests to delete all local profiles.
 
 Import automatically after bootstrap, then on the configured interval. Background
 suspension can delay execution; persist state and refresh overdue subscriptions on
-restart. Provide pause, manual refresh, last success and visible error/warning state.
+restart. Provide pause, manual refresh, last success, successful source and visible error/warning state.
 
 Replace subscription-owned profiles and remove those absent from the next valid
 snapshot. Keep separately added profiles. Preserve local connection mode and the
@@ -138,7 +154,7 @@ an otherwise unchanged active connection.
 | 5xx / network or TLS error | Keep the previous snapshot; bounded retries may use exponential backoff. |
 | Other status, malformed or unsupported body | Keep the previous snapshot and report failure. |
 
-Automatic failures retry on the configured schedule; avoid indefinite retry loops
+After trying every configured source, automatic failures retry on the configured schedule; avoid indefinite retry loops
 or unprompted interactive authentication dialogs. Apply a request timeout and a
 limit to decoded bytes even without Content-Length. BrowserMegaProxy uses its
 ordinary import download limits and retries; other clients may impose their own

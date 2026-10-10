@@ -56,6 +56,9 @@
   "subscription": {
     "url": "https://configs.example.com/MegaProxy.json",
     "intervalMinutes": 60,
-    "enabled": false
+    "enabled": false,
+    "fallbackUrls": [
+      "https://backup.example.com/MegaProxy.json"
+    ]
   }
 }

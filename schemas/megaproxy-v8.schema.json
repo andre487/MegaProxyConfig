@@ -677,6 +677,16 @@
         },
         "enabled": {
           "type": "boolean"
+        },
+        "fallbackUrls": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^https://",
+            "maxLength": 2048
+          },
+          "maxItems": 7,
+          "uniqueItems": true
         }
       },
       "required": [
