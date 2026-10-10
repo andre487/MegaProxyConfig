@@ -67,8 +67,8 @@ follow the password export preference; query tokens in URLs remain sensitive eve
 when passwords are omitted. Subscription credentials, profile ownership and refresh
 status stay local rather than automatically joining browser-account sync.
 
-Clients without subscription support may ignore this additive field. The Android
-baseline accepts it as an unknown root field but does not implement updates.
+Clients without subscription support may ignore this additive field. AndroidMegaProxy
+supports the same root definition and validates it in its version 8 schema.
 BrowserMegaProxy also allows the user to subscribe while importing a remote URL;
 exporting the resulting settings produces the same root property.
 
@@ -167,6 +167,57 @@ content applies. If no usable profiles remain, preserve the previous snapshot.
 Validate and apply atomically; persistence or native proxy-setting failures roll
 back the update. Failed updates must not remove working profiles or disconnect
 an otherwise unchanged active connection.
+
+## Android update behavior
+
+AndroidMegaProxy sends `X-MegaProxy-Client: android` and its installed app version
+in `X-MegaProxy-Version`. Subscription credentials and URL query tokens are stored
+with Android Keystore encryption. Settings, ownership and status remain local and
+are excluded from Android backup. JSON exports include only the portable definition;
+its password follows **Include passwords**, while URL query tokens remain present.
+
+Settings provides primary and up to seven backup HTTPS URLs, separate optional
+Basic Auth, interval, pause, **Update now**, last success, successful source index
+and warning/error status. Importing a canonical configuration with `subscription`
+bootstraps ownership of its imported profiles; configuring a new subscription in
+Settings initially owns no existing profiles. A conflicting canonical ID belonging
+to a separate local profile fails that source, preserving the local profile.
+Legacy imports reconcile only previously owned profiles by unique name, then
+unique type/host/port. Supported bodies are the same as Android manual imports:
+MegaProxy JSON, FoxyProxy JSON, ProxyList and SuperProxy text. ZeroOmega JSON is
+not supported. Downloaded subscription definitions do not replace local settings.
+Changing or removing local settings while downloading invalidates that download.
+
+Android schedules persisted, network-constrained one-shot JobScheduler checks.
+The first check is due immediately; subsequent checks use the configured interval,
+including intervals below the periodic-job minimum. Android battery/background
+restrictions can delay execution. Restart schedules an overdue missing job;
+pausing cancels scheduled checks and manual refresh remains available.
+Each refresh downloads full snapshots, starts at the primary and tries each
+source once. Requests use a 15-second connect/read timeout and a 45-second read
+budget, with a 4 MiB decoded-body limit and strict UTF-8. TLS verification is
+mandatory, redirects and non-200 responses are rejected, and no conditional cache
+is used. Downloads follow the Android VPN routing policy for the app; when the
+app is excluded from per-app VPN routing, downloads use its ordinary network.
+They do not bypass the VPN or enable a disconnected VPN automatically.
+
+Snapshots commit profiles, imported preferences, ownership, selection and status
+as one storage transaction. Failure retains the previous configuration. Selection,
+Always-on selection and runtime connection profile are preserved while present;
+removed selections use the downloaded `activeProfileId`, then the first imported
+profile. Separately added profiles remain and omitted profile secrets follow the
+normal import-preservation rules. Canonical snapshots replace supported global
+preferences, resetting omitted preferences to Android defaults; text/FoxyProxy
+snapshots leave global preferences local. The connection-desired flag is never
+changed, so bootstrap does not authorize a VPN connection.
+
+Android keeps an established tunnel on its existing native configuration.
+A successful update that changes its effective connection settings marks the
+existing **Reconnect** action and shows a notice in subscription settings.
+The user reconnects to apply it; an update never tears down a working tunnel or
+claims that its stored snapshot has already migrated live connections. Inactive
+profile metadata and identical effective settings do not create a reconnect notice.
+No system notification permission is requested for subscription updates.
 
 ## Browser update algorithm
 
