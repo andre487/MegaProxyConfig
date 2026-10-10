@@ -136,7 +136,7 @@ test('MASQUE is valid in the shared contract with an optional typed path templat
   }
 })
 
-test('root configuration subscriptions validate without changing Android baseline acceptance', async () => {
+test('root configuration subscriptions validate in both schemas', async () => {
   const config = await read('examples/browser-v8.json')
   config.subscription = { url: 'https://configs.example.com/MegaProxy.json', username: 'subscriber', password: 'example', fallbackUrls: ['https://backup.example.com/config.json'], intervalMinutes: 15, enabled: true }
   assert.ok(shared(config), JSON.stringify(shared.errors))
@@ -155,7 +155,10 @@ test('root configuration subscriptions validate without changing Android baselin
     { url: 'https://configs.example.com/', fallbackUrls: ['http://backup.example.com/'] },
     { url: 'https://configs.example.com/', fallbackUrls: ['https://backup.example.com/', 'https://backup.example.com/'] },
     { url: 'https://configs.example.com/', fallbackUrls: Array.from({ length: 8 }, (_, i) => `https://backup${i}.example.com/`) }
-  ]) assert.equal(shared({ ...config, subscription }), false)
+  ]) {
+    assert.equal(shared({ ...config, subscription }), false)
+    assert.equal(android({ ...config, subscription }), false)
+  }
 })
 
 test('HTTPS HTTP/3 preference is optional, boolean and compatible with both schemas', async () => {
