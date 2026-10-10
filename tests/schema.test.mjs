@@ -129,3 +129,26 @@ test('MASQUE is valid in the shared contract with an optional typed path templat
     assert.equal(shared(config), false)
   }
 })
+
+test('root configuration subscriptions validate without changing Android baseline acceptance', async () => {
+  const config = await read('examples/browser-v8.json')
+  config.subscription = { url: 'https://configs.example.com/MegaProxy.json', username: 'subscriber', password: 'example', fallbackUrls: ['https://backup.example.com/config.json'], intervalMinutes: 15, enabled: true }
+  assert.ok(shared(config), JSON.stringify(shared.errors))
+  assert.ok(android(config), JSON.stringify(android.errors))
+  for (const subscription of [null, { url: 'https://configs.example.com/MegaProxy.json' }]) {
+    assert.ok(shared({ ...config, subscription }), JSON.stringify(shared.errors))
+  }
+  for (const subscription of [
+    {}, [], { url: 'http://configs.example.com/' },
+    { url: 'https://configs.example.com/', username: 123 },
+    { url: 'https://configs.example.com/', password: 'x'.repeat(1025) },
+    { url: 'https://configs.example.com/', intervalMinutes: 0 },
+    { url: 'https://configs.example.com/', intervalMinutes: 10081 },
+    { url: 'https://configs.example.com/', enabled: 'yes' },
+    { url: 'https://configs.example.com/', token: 'unknown' },
+    { url: 'https://configs.example.com/', fallbackUrls: 'https://backup.example.com/' },
+    { url: 'https://configs.example.com/', fallbackUrls: ['http://backup.example.com/'] },
+    { url: 'https://configs.example.com/', fallbackUrls: ['https://backup.example.com/', 'https://backup.example.com/'] },
+    { url: 'https://configs.example.com/', fallbackUrls: Array.from({ length: 8 }, (_, i) => `https://backup${i}.example.com/`) }
+  ]) assert.equal(shared({ ...config, subscription }), false)
+})

@@ -19,6 +19,15 @@ an uppercase ISO-style two-letter code. Array order is profile display order.
 `passwordsIncluded` and `privateKeysIncluded` describe export choices, not requirements
 that all profiles contain those keys. Never store real secrets in repository examples.
 
+## Configuration subscriptions
+
+The optional root `subscription` property configures automatic HTTPS downloads,
+including Basic Auth credentials, interval and pause state. It is distinct from
+`browser.routing.subscriptions`, which distributes hostname lists. Import a full
+configuration once to bootstrap it; clients without support may ignore the field.
+See the [configuration distribution protocol](subscription-protocol.md) for field
+semantics, requests, responses, supported legacy formats and snapshot application.
+
 ## Proxy settings
 
 Supported portable `proxy.type` values are `HTTPS`, `HTTPS_JUMP`, `SSH`, `SSH_JUMP`, `SOCKS5`, and `MASQUE`.
