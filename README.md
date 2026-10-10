@@ -11,6 +11,7 @@ Clients must handle SOCKS5 or explicitly report that they do not support it. The
 Android baseline records its current implementation and does not accept SOCKS5.
 
 - [Format and import semantics](docs/configuration.md)
+- [HTTPS configuration distribution protocol](docs/subscription-protocol.md)
 - [Android version 8 baseline](schemas/android-v8.schema.json)
 - [Shared version 8 schema](schemas/megaproxy-v8.schema.json)
 - [Android example](examples/android-v8.json)

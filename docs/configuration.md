@@ -21,54 +21,12 @@ that all profiles contain those keys. Never store real secrets in repository exa
 
 ## Configuration subscriptions
 
-The optional root `subscription` property describes automatic HTTPS configuration
-updates. It is distinct from `browser.routing.subscriptions`, which distributes
-hostname lists. Importing a complete configuration once can bootstrap a subscription.
-This field is additive to version 8; clients without subscription support may ignore
-it. The Android baseline does not implement automatic configuration subscriptions.
-
-```json
-{
-  "subscription": {
-    "url": "https://configs.example.com/MegaProxy.json",
-    "username": "subscriber",
-    "password": "example-password",
-    "intervalMinutes": 60,
-    "enabled": true
-  }
-}
-```
-
-Only `url` is required. It must be an absolute HTTPS URL without userinfo or a
-fragment (at most 2,048 characters). Optional `username` and `password` are HTTP
-Basic Auth credentials, separate from proxy credentials (at most 1,024 characters
-each). An absent pair means no Authorization header. If either is present, encode
-`username:password` as UTF-8 and Base64; the missing counterpart is an empty string.
-Usernames cannot contain a colon or control characters; passwords cannot contain
-control characters. Reject redirects so credentials do not reach a different URL.
-Use a trusted server and a certificate trusted by the client.
-
-`intervalMinutes` is an integer from 1 through 10,080, default 60; `enabled` is a
-boolean, default true. Background execution may delay updates. Schedule an initial
-refresh after import and resume overdue updates after restarting the client.
-Failed downloads, authentication, validation or unsupported profiles retain the
-last working snapshot; record an error and retry on the configured schedule.
-
-Use stable profile IDs to update subscription-owned profiles and remove those
-missing from the next snapshot. Preserve separately added profiles and local
-connection selection while the selected profile still exists. Other portable
-preferences use the client's ordinary import rules. Never automatically activate
-`activeProfileId`. A downloaded document need not repeat subscription settings;
-it must not silently replace the subscription URL, credentials or enabled flag.
-
-Importing without `subscription` preserves the current subscription. Explicit null
-removes it. Reimporting the same normalized URL and username with an omitted
-password preserves the saved password; an empty password clears it. Changed URLs
-or usernames must not inherit old credentials. Exported subscription passwords
-follow `passwordsIncluded`; omit them when exporting without passwords. URLs may
-contain sensitive query parameters even when passwords are omitted. Subscription
-credentials, ownership and refresh status are local and not automatically synced.
-Clients implementing subscriptions should expose pause, manual refresh and status.
+The optional root `subscription` property configures automatic HTTPS downloads,
+including Basic Auth credentials, interval and pause state. It is distinct from
+`browser.routing.subscriptions`, which distributes hostname lists. Import a full
+configuration once to bootstrap it; clients without support may ignore the field.
+See the [configuration distribution protocol](subscription-protocol.md) for field
+semantics, requests, responses, supported legacy formats and snapshot application.
 
 ## Proxy settings
 
