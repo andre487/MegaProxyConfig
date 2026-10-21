@@ -182,6 +182,11 @@ and warning/error status. Importing a canonical configuration with `subscription
 bootstraps ownership of its imported profiles; configuring a new subscription in
 Settings initially owns no existing profiles. A conflicting canonical ID belonging
 to a separate local profile fails that source, preserving the local profile.
+Android exports all profiles together with the portable subscription definition.
+Reimporting that file adopts all imported profiles into the subscription, including
+formerly local profiles; a later refresh can remove them if absent from the feed.
+To transfer profiles without adopting them, omit the root `subscription` property;
+an existing subscription on the receiver is then preserved.
 Legacy imports reconcile only previously owned profiles by unique name, then
 unique type/host/port. Supported bodies are the same as Android manual imports:
 MegaProxy JSON, FoxyProxy JSON, ProxyList and SuperProxy text. ZeroOmega JSON is
@@ -206,9 +211,10 @@ as one storage transaction. Failure retains the previous configuration. Selectio
 Always-on selection and runtime connection profile are preserved while present;
 removed selections use the downloaded `activeProfileId`, then the first imported
 profile. Separately added profiles remain and omitted profile secrets follow the
-normal import-preservation rules. Canonical snapshots replace supported global
-preferences, resetting omitted preferences to Android defaults; text/FoxyProxy
-snapshots leave global preferences local. The connection-desired flag is never
+normal import-preservation rules. Canonical snapshots update only explicitly supplied
+global preference fields, preserving local values for omitted fields, including within
+partially supplied groups. Text/FoxyProxy snapshots leave global preferences local.
+The connection-desired flag is never
 changed, so bootstrap does not authorize a VPN connection.
 
 Android keeps an established tunnel on its existing native configuration.
