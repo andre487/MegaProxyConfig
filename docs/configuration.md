@@ -152,8 +152,37 @@ requires a semantic parser beyond JSON Schema's length check.
 
 SSH fingerprints: DEFAULT, OPENSSH_TERMUX, CONNECTBOT, JUICESSH, TERMIUS_ANDROID.
 DNS providers: CLOUDFLARE, GOOGLE, QUAD9, YANDEX, YANDEX_SAFE, YANDEX_FAMILY, CUSTOM.
-CUSTOM uses `dns.customDohUrl` (HTTPS endpoint, up to 2,048 characters).
-Filtering DNS policies must not fall back to unfiltered providers.
+CUSTOM uses the legacy `dns.customDohUrl` string (up to 2,048 characters). Android accepts
+`https://` for DoH, `tcp://` for plain TCP DNS and `udp://` for plain UDP DNS. Examples:
+`https://dns.example/dns-query`, `tcp://192.0.2.53:53`, `udp://[2001:db8::53]:53`.
+Plain endpoints require a numeric IPv4 or bracketed IPv6 address, no path or query,
+and an optional port (default 53). The field name and version 8 schemas are unchanged;
+clients without plain DNS support must not reinterpret TCP/UDP endpoints as DoH.
+
+| Android DNS mode | Route and encryption |
+|---|---|
+| DoH | Through the proxy chain; HTTPS to the resolver |
+| TCP DNS | Through the proxy chain, including LAN resolvers; plaintext after the proxy |
+| UDP DNS with actual MASQUE/HTTP3 | CONNECT-UDP through the proxy; plaintext after the proxy |
+| UDP DNS with SOCKS5 | UDP ASSOCIATE; SOCKS5 adds no encryption |
+| UDP DNS with actual HTTPS/TCP or SSH | Direct protected socket outside the VPN; plaintext throughout |
+
+SOCKS5 adds no encryption to TCP DNS either. HTTPS profiles preferring HTTP/3 use the
+actual selected transport. A failed tunneled UDP query never retries directly.
+Plain DNS and CUSTOM have no public DoH fallbacks; filtering presets must not fall back
+to unfiltered providers. Other DoH presets race their permitted alternatives 200 ms apart,
+using the first valid response and cancelling losers. Slow queries may reach multiple providers.
+Proxy bootstrap uses its own provider list before VPN creation, independently of profile DNS.
+
+Plain DNS requires local **Insecure DNS** confirmation. Allowing invalid DoH certificates
+also requires local confirmation and never changes proxy/jump trust. These approvals
+are not portable fields: import or subscription updates cannot enable them. An unchanged
+resolver retains its local approvals; a changed resolver requires confirmation again.
+Query tokens in custom DoH URLs remain in JSON even when passwords are omitted; exports
+containing these URLs must be treated as sensitive.
+Android's MTU, language, traffic units, update preferences, caches and runtime state are
+also local and do not join portable JSON. Proxy certificate/SSH host-key policies remain
+supported portable profile fields; manual Android import warns about weakened verification.
 
 These fields are optional Android settings; their presence does not mean a browser
 can implement them. Browser TLS, DNS, IPv6 and transport multiplexing are controlled
