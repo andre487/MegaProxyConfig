@@ -220,9 +220,11 @@ fields are discarded and do not round-trip through Android.
 Stable IDs are generator-controlled. Reimport updates matching profiles and appends
 new IDs; existing local order is retained. Omitted `password` or `privateKey` preserves
 stored secrets; explicit empty strings clear them. The same rule applies to jump
-secrets. BrowserMegaProxy preserves an omitted proxy password only when the protocol,
+secrets. Both clients preserve an omitted proxy password only when the protocol,
 normalized host, port and username are unchanged, to avoid reusing a secret for a
-different endpoint or account. Profiles absent from a file are retained unless
+different endpoint or account. Android applies the same recipient check to private keys
+and separate Jump credentials; shared Jump authentication requires both endpoints to
+remain unchanged. Profiles absent from a file are retained unless
 the user explicitly selects them for removal. Imported active/always-on IDs do not authorize automatic connection.
 Review connection-affecting changes before applying an import.
 
