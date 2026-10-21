@@ -53,8 +53,8 @@ the primary again, allowing recovery without editing the subscription.
 
 The Basic Auth credential pair is shared by all explicitly configured sources.
 Only list endpoints trusted to receive that pair. Redirects cannot add credential
-recipients. BrowserMegaProxy additionally permits a trusted subscription to replace
-its source URLs as documented below; Android keeps its locally configured sources.
+recipients. BrowserMegaProxy and AndroidMegaProxy permit a trusted subscription to replace
+its source URLs as documented below.
 Pause disables scheduled checks for the whole subscription. **Update now** still performs
 one refresh while paused, without enabling automatic updates. Record which source supplied a successful
 snapshot and show failures when all sources fail; keep the previous snapshot
@@ -64,7 +64,7 @@ A missing `subscription` in a manual import preserves the existing subscription;
 explicit null removes it. An omitted password preserves the saved password only
 for the same normalized URL and username. An empty password clears it. Changed
 URLs or usernames in an ordinary manual import must not inherit old credentials.
-The BrowserMegaProxy source-replacement flow below deliberately retains its local
+The source-replacement flow below deliberately retains its local
 credential pair when the source URLs change. Exported subscription passwords
 follow the password export preference; query tokens in URLs remain sensitive even
 when passwords are omitted. Subscription credentials, profile ownership and refresh
@@ -75,9 +75,9 @@ supports the same root definition and validates it in its version 8 schema.
 BrowserMegaProxy also allows the user to subscribe while importing a remote URL;
 exporting the resulting settings produces the same root property.
 
-## Browser source replacement
+## Subscription source replacement
 
-BrowserMegaProxy allows a trusted canonical configuration to update its own
+Both clients allow a trusted canonical configuration to update its own
 subscription source list. On bootstrap from a URL, a root `subscription` object
 may replace the dialog's source URLs while retaining the credentials and update
 preferences supplied in that dialog. Subsequent refreshes use the same rule:
@@ -94,9 +94,8 @@ preferences supplied in that dialog. Subsequent refreshes use the same rule:
   pair is sent to the replacement URLs, so a source operator can choose new
   credential recipients. Subscribe only to operators trusted with this authority.
 
-AndroidMegaProxy does not apply remote source replacement; it retains locally
-configured URLs and credentials. Ordinary manual import of a subscription
-continues to use the same-URL/account omitted-password rule above.
+Android and browser refreshes use the same source-replacement rules. Ordinary manual
+import of a subscription continues to use the same-URL/account omitted-password rule above.
 
 ## Request and authentication
 
@@ -148,8 +147,8 @@ A successful response is 200 with a complete UTF-8 snapshot. MegaProxy version 8
 JSON is the canonical representation, served as `application/json`. The snapshot
 must pass schema, unique-ID, reference and client-capability checks. It need not
 repeat `subscription`. Downloaded credentials, interval and enabled flag never
-replace the corresponding local subscription preferences. BrowserMegaProxy may
-replace source URLs; Android retains its local source list.
+replace the corresponding local subscription preferences. Both clients may replace
+source URLs using the rules above.
 
 Clients may additionally accept formats supported by their manual importer. No
 extra envelope or conversion API is required: use the existing format's body and
@@ -219,7 +218,8 @@ an existing subscription on the receiver is then preserved.
 Legacy imports reconcile only previously owned profiles by unique name, then
 unique type/host/port. Supported bodies are the same as Android manual imports:
 MegaProxy JSON, FoxyProxy JSON, ProxyList and SuperProxy text. ZeroOmega JSON is
-not supported. Downloaded subscription definitions do not replace local settings.
+not supported. Downloaded subscription definitions replace source URLs only, retaining
+local Basic Auth, interval and pause state under the common source-replacement rules.
 Changing or removing local settings while downloading invalidates that download.
 
 Android schedules persisted, network-constrained one-shot JobScheduler checks.
