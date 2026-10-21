@@ -52,9 +52,10 @@ or combine remaining sources. The next scheduled or manual refresh starts with
 the primary again, allowing recovery without editing the subscription.
 
 The Basic Auth credential pair is shared by all explicitly configured sources.
-Only list endpoints trusted to receive that pair. Redirects and subscription
-settings inside downloaded documents cannot add credential recipients. Pause
-disables scheduled checks for the whole subscription. **Update now** still performs
+Only list endpoints trusted to receive that pair. Redirects cannot add credential
+recipients. BrowserMegaProxy additionally permits a trusted subscription to replace
+its source URLs as documented below; Android keeps its locally configured sources.
+Pause disables scheduled checks for the whole subscription. **Update now** still performs
 one refresh while paused, without enabling automatic updates. Record which source supplied a successful
 snapshot and show failures when all sources fail; keep the previous snapshot
 in that case. Failover selects a configuration source, not an active proxy.
@@ -62,7 +63,9 @@ in that case. Failover selects a configuration source, not an active proxy.
 A missing `subscription` in a manual import preserves the existing subscription;
 explicit null removes it. An omitted password preserves the saved password only
 for the same normalized URL and username. An empty password clears it. Changed
-URLs or usernames must not inherit old credentials. Exported subscription passwords
+URLs or usernames in an ordinary manual import must not inherit old credentials.
+The BrowserMegaProxy source-replacement flow below deliberately retains its local
+credential pair when the source URLs change. Exported subscription passwords
 follow the password export preference; query tokens in URLs remain sensitive even
 when passwords are omitted. Subscription credentials, profile ownership and refresh
 status stay local rather than automatically joining browser-account sync.
@@ -71,6 +74,29 @@ Clients without subscription support may ignore this additive field. AndroidMega
 supports the same root definition and validates it in its version 8 schema.
 BrowserMegaProxy also allows the user to subscribe while importing a remote URL;
 exporting the resulting settings produces the same root property.
+
+## Browser source replacement
+
+BrowserMegaProxy allows a trusted canonical configuration to update its own
+subscription source list. On bootstrap from a URL, a root `subscription` object
+may replace the dialog's source URLs while retaining the credentials and update
+preferences supplied in that dialog. Subsequent refreshes use the same rule:
+
+- A valid root `subscription` object replaces the primary URL and the complete
+  `fallbackUrls` list. Omitting `fallbackUrls` clears the previous backup list.
+- Missing `subscription`, or `subscription: null` in a refresh, keeps the current
+  source list. Only explicit manual import/settings removal unsubscribes.
+- Local Basic Auth, interval and enabled/pause state remain unchanged. Credentials,
+  interval and enabled state inside the downloaded object do not override them.
+- Validate and apply the source change atomically with the profiles. A malformed
+  source definition or failed update retains the previous working configuration.
+- The next refresh starts from the new primary URL. The retained local Basic Auth
+  pair is sent to the replacement URLs, so a source operator can choose new
+  credential recipients. Subscribe only to operators trusted with this authority.
+
+AndroidMegaProxy does not apply remote source replacement; it retains locally
+configured URLs and credentials. Ordinary manual import of a subscription
+continues to use the same-URL/account omitted-password rule above.
 
 ## Request and authentication
 
@@ -121,8 +147,9 @@ is mandatory. See [HTTP Basic authentication, RFC 7617](https://www.rfc-editor.o
 A successful response is 200 with a complete UTF-8 snapshot. MegaProxy version 8
 JSON is the canonical representation, served as `application/json`. The snapshot
 must pass schema, unique-ID, reference and client-capability checks. It need not
-repeat `subscription`; downloaded subscription settings must not silently replace
-the locally configured URL list, credentials or enabled flag.
+repeat `subscription`. Downloaded credentials, interval and enabled flag never
+replace the corresponding local subscription preferences. BrowserMegaProxy may
+replace source URLs; Android retains its local source list.
 
 Clients may additionally accept formats supported by their manual importer. No
 extra envelope or conversion API is required: use the existing format's body and
@@ -158,9 +185,11 @@ Importing the initial bootstrap does not authorize automatic connection. Prefer 
 BrowserMegaProxy reuses a uniquely matching name, then a unique type/host/port
 endpoint; ambiguous or completely changed profiles receive new local IDs.
 
-Replace every setting represented by the source format. Canonical MegaProxy
-snapshots reset omitted supported browser preferences to defaults. Formats without
-application preferences leave them unchanged. Omitted exported passwords retain
+Apply explicitly supplied supported settings represented by the source format.
+Canonical MegaProxy snapshots preserve omitted browser preferences, including
+within partially supplied routing and list-subscription objects and per-profile
+browser options. Explicit false values and empty arrays replace their settings.
+Formats without application preferences leave them unchanged. Omitted exported passwords retain
 saved credentials according to ordinary import semantics; explicit empty values
 clear them. Unsupported profiles and fields produce warnings while supported
 content applies. If no usable profiles remain, preserve the previous snapshot.
@@ -240,9 +269,10 @@ and the **Update now** action in its settings and popup:
 3. Reconcile subscription-owned profiles using stable IDs, or the documented unique
    matching rules for legacy formats. Preserve separately added profiles; remove
    only absent profiles owned by this subscription.
-4. Replace settings represented by the format. Keep the locally configured
-   subscription URLs, authentication, interval and pause state. Reset omitted
-   supported MegaProxy browser preferences according to snapshot semantics.
+4. Apply explicitly supplied settings represented by the format; preserve omitted
+   supported browser preferences and nested fields. Keep local subscription
+   authentication, interval and pause state. A supplied root `subscription` object
+   replaces source URLs according to the browser source-replacement rules below.
 5. Preserve the local selected profile if it survives, regardless of a different
    downloaded `activeProfileId`. If a previously selected profile disappears, choose
    the importable downloaded `activeProfileId`, then the first importable snapshot

@@ -67,7 +67,8 @@ this implementation must report it as unsupported.
 BrowserMegaProxy supports SOCKS5 with proxy-side DNS resolution. Firefox supports
 username/password authentication; Chromium supports only SOCKS5 without credentials
 and must report this limitation when credentials are supplied. SOCKS5 usernames
-and passwords are limited to 255 UTF-8 bytes each. No HTTP Basic authorization
+and passwords are limited to 255 UTF-8 bytes each. Colons are allowed in SOCKS5
+usernames; HTTP Basic usernames cannot contain colons. No HTTP Basic authorization
 header or HTTP proxy authentication dialog is used for SOCKS5.
 
 Android supports TCP CONNECT and UDP ASSOCIATE, on port 1080 by default. Leave
@@ -202,8 +203,8 @@ Profile `browser` contains:
 
 Local-network bypass uses the shared `routing.bypassLocalNetworks` field. It defaults
 to true, independent of custom domain exclusions. A knock host must not be bypassed.
-Firefox disables knock when both credentials are saved; Chromium needs knock even
-with saved credentials. With missing credentials both browsers open knock to show
+Firefox skips automatic knock when both credentials are saved, while manual knock
+remains available. Chromium needs automatic knock even with saved credentials. With missing credentials both browsers open knock to show
 the browser's native authentication prompt. A configured knock host is required for
 that workflow; credentials entered into the browser prompt are not readable by the
 extension and are not copied into its configuration.
@@ -219,12 +220,19 @@ fields are discarded and do not round-trip through Android.
 Stable IDs are generator-controlled. Reimport updates matching profiles and appends
 new IDs; existing local order is retained. Omitted `password` or `privateKey` preserves
 stored secrets; explicit empty strings clear them. The same rule applies to jump
-secrets. Profiles absent from a file are retained unless the user explicitly selects
-them for removal. Imported active/always-on IDs do not authorize automatic connection.
+secrets. BrowserMegaProxy preserves an omitted proxy password only when the protocol,
+normalized host, port and username are unchanged, to avoid reusing a secret for a
+different endpoint or account. Profiles absent from a file are retained unless
+the user explicitly selects them for removal. Imported active/always-on IDs do not authorize automatic connection.
 Review connection-affecting changes before applying an import.
 
-Export omits passwords and private keys by default. Including secrets requires an
-explicit user choice. Unsupported documented fields and undocumented fields produce
+Exports must provide a visible choice for including passwords, with an opt out
+available before the file is saved. BrowserMegaProxy includes passwords by default
+and exposes an **Include passwords** checkbox; clearing it omits both proxy and
+subscription passwords and sets `passwordsIncluded` to false. Programmatic callers
+may default to omitting passwords. Private keys require an explicit opt in;
+BrowserMegaProxy does not export them. URL query tokens are not removed by the
+password opt out, so passwordless exports can still contain sensitive URLs. Unsupported documented fields and undocumented fields produce
 an import notice and are discarded; neither is retained for export. The Android
 notice categories are described below.
 Unsupported profiles may be skipped on import with a visible summary.
@@ -253,8 +261,10 @@ BrowserMegaProxy reports their omission in the import review before applying the
 connection profile to the whole browser. PAC entries are skipped.
 
 On manual import, without a `browser` block in an updated Android profile, BrowserMegaProxy preserves
-the existing local knock and domain exclusions. Subscription snapshots instead
-replace all supported settings and reset omitted browser preferences to defaults.
+the existing local knock and domain exclusions. Subscription snapshots likewise
+apply only explicitly supplied supported preferences; omitted browser preferences,
+routing fields, list subscription options and profile browser options remain local.
+Explicit false values and empty arrays replace the corresponding settings.
 Per-profile Android `routing`, including its local bypass flag, is not applied by
 the extension; only document-level `routing.bypassLocalNetworks` is supported.
 Unsupported imported Android settings
