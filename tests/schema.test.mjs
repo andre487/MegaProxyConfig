@@ -201,3 +201,21 @@ test('dynamic list IDs and browser routing strategies share the browser contract
   config.browser.routing.subscriptions.domainSources = Array.from({ length: 65 }, (_, i) => `source_${i}`)
   assert.equal(shared(config), false)
 })
+
+
+test('shared HTTPS knock host is typed in Android and shared schemas without browser metadata', async () => {
+  const config = await read('examples/android-v8.json')
+  const proxy = config.profiles.find(p => p.proxy.type === 'HTTPS').proxy
+  for (const validate of [android, shared]) {
+    for (const value of ['', 'knock.example', '192.0.2.1', '2001:db8::1', '[2001:db8::1]']) {
+      proxy.knockHost = value
+      assert.ok(validate(config), JSON.stringify(validate.errors))
+    }
+    for (const value of [true, 1, null, 'https://knock.example', 'host:443', 'user@host', 'host/path', 'x'.repeat(254)]) {
+      proxy.knockHost = value
+      assert.equal(validate(config), false)
+    }
+    delete proxy.knockHost
+    assert.ok(validate(config), JSON.stringify(validate.errors))
+  }
+})
