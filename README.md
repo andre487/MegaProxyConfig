@@ -35,3 +35,5 @@ without requiring an npm runtime dependency or publishing a package.
 
 Changing the portable JSON version requires coordinated consumer changes. Adding
 optional platform keys does not. Keep baseline and shared compatibility tests.
+
+- [Portable field reference and local settings](docs/field-reference.md)

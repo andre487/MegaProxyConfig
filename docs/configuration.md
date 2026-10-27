@@ -42,6 +42,27 @@ DNS names or IPv4. `username` is optional, up to 4,096 characters; `password` is
 optional, up to 16,384. HTTPS uses Basic authentication. A browser may instead request
 credentials through its native proxy authentication dialog.
 
+### Shared knock host
+
+`profiles[].proxy.knockHost` is an optional hostname/IP without a scheme, path,
+credentials or port (maximum 253 characters). Omission leaves an existing value
+unchanged during a merge; an explicit empty string disables it. For legacy input,
+use `profiles[].browser.knockHost` only when the shared key is absent. The shared
+key takes precedence even when empty. Export the shared key; browser-compatible
+producers may also write the legacy alias with the same value.
+
+Android uses this field only for regular HTTPS/TCP connection diagnostics. It sends
+CONNECT to port 443 through the same proxy with the profile's credentials. An
+unmasked 407 proves authentication rejection; a successful CONNECT, HTML response
+or timeout cannot prove a decoy. Inconclusive probes do not replace the normal
+connection test. Never bypass the proxy or log addresses or credentials. Editing
+this diagnostic metadata does not reconnect a running VPN. HTTPS Jump, selected
+HTTP/3, MASQUE, SSH and SOCKS5 do not use this Android probe.
+
+Browser clients use the same host for their authentication workflow described
+below. Legacy browser clients may require the alias. Configuration delivery must
+preserve the shared field for Android when removing browser-only settings.
+
 Optional Android proxy fields: `privateKey` (unencrypted SSH key, up to 65,536
 characters), `sshProfile`, `trustedHostKey`, `acceptAnyHostKey`, and
 `allowInvalidProxyCertificate`. The last two deliberately weaken verification.
@@ -181,7 +202,8 @@ are not portable fields: import or subscription updates cannot enable them. An u
 resolver retains its local approvals; a changed resolver requires confirmation again.
 Query tokens in custom DoH URLs remain in JSON even when passwords are omitted; exports
 containing these URLs must be treated as sensitive.
-Android's MTU, language, traffic units, update preferences, caches and runtime state are
+Android's MTU, source-application validation mode/level, language,
+traffic units, update preferences, caches and runtime state are
 also local and do not join portable JSON. Proxy certificate/SSH host-key policies remain
 supported portable profile fields; manual Android import warns about weakened verification.
 
@@ -196,7 +218,7 @@ Profile `browser` contains:
 
 | Field | Meaning |
 |---|---|
-| `knockHost` | Hostname/IP without scheme, path or port; empty disables configuration |
+| `knockHost` | Legacy alias of shared `proxy.knockHost`; used only when the shared key is absent |
 | `bypass` | Domain/IP exclusions, each domain also matches its subdomains |
 | `masqueTemplate` | Optional MASQUE CONNECT-UDP path template; see MASQUE above |
 | `authMode` | auto/challenge; retained for legacy imports; saved credentials in Firefox use immediate CONNECT authentication |
@@ -213,7 +235,8 @@ Platform objects are optional. Unknown keys are allowed for forward compatibilit
 but known keys are strictly typed. Clients must discard unsupported platform fields
 after displaying the import notice described below. Android reports ignored browser
 settings and undocumented fields separately, at most once each per import. Browser
-fields are discarded and do not round-trip through Android.
+fields are discarded and do not round-trip through Android, except the legacy
+knock-host alias, which migrates to `proxy.knockHost`.
 
 ## Import, merge and export
 
@@ -240,8 +263,8 @@ notice categories are described below.
 Unsupported profiles may be skipped on import with a visible summary.
 
 Other Android input formats are not portable JSON: FoxyProxy JSON (`data` array;
-`https`/`ssl`, `hostname` or `address`, numeric/string port, `title`, `cc` and credentials),
-ProxyList (one HTTPS or `masque://` URL per non-comment line with percent-encoded `user:password`,
+`https`/`ssl`/`socks5`, `hostname` or `address`, numeric/string port, `title`, `cc` and credentials),
+ProxyList (one HTTPS, `socks5://` or `masque://` URL per non-comment line with percent-encoded `user:password`,
 optional `title`/`cc` query parameters), and SuperProxy's supported subset (same list
 with first nonempty line `# superproxy:proxylist:v1`). SuperProxy certificate pins
 are not imported. These formats have no stable IDs and create new profiles on manual import.
@@ -546,3 +569,8 @@ the probe ACK window so initial browser UDP replies fit too. The browser TLS/JA3
 preset is preserved while padding and receive-MTU parameters adapt to encapsulation.
 Firefox Jump falls back
 because its 1200-byte DATAGRAM limit cannot fit the required nested QUIC packets.
+
+## Field coverage
+
+See the [field reference](field-reference.md) for the complete serialization groups,
+client capabilities and deliberately local settings.
