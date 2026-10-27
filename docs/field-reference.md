@@ -24,6 +24,9 @@ round-tripping: consumers report and discard unsupported settings.
 | `browserSubscriptions` | `domainSources`, `siteSources`, `autoUpdate`, `throughProxy` |
 | `configSubscription` | `url`, `username`, `password`, `intervalMinutes`, `enabled`, `fallbackUrls` |
 
+| `#.browser` | `theme`, `language`, `routing`, `webRTC` |
+| `browserRouting.assignments[]` | `domain`, `profileId`, `includeSubdomains` |
+
 Android transfers the document/profile TLS and routing settings, SSH settings,
 failover, diagnostic log limit, profile selections, DNS, credentials, proxy trust,
 jump settings, HTTP/3 preference and shared knock host. Per-profile TLS/routing
@@ -39,7 +42,7 @@ Consumers preserve omitted secrets only according to the documented identity and
 subscription merge rules. An explicit empty supported value clears its setting.
 
 The following Android settings intentionally stay local: MTU; source-application
-validation enablement and level; traffic limits/counters; UI language and traffic
+validation enablement and level; traffic counters; UI language and traffic
 units; update source/schedule/consent; DNS security approvals; Keystore state;
 resolved addresses; subscription ownership/status/generation; runtime/reconnect
 state and caches. Browser experimental MASQUE enablement and browser permissions

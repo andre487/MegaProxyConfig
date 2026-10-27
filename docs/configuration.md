@@ -202,7 +202,7 @@ are not portable fields: import or subscription updates cannot enable them. An u
 resolver retains its local approvals; a changed resolver requires confirmation again.
 Query tokens in custom DoH URLs remain in JSON even when passwords are omitted; exports
 containing these URLs must be treated as sensitive.
-Android's MTU, source-application validation mode/level, traffic limits, language,
+Android's MTU, source-application validation mode/level, language,
 traffic units, update preferences, caches and runtime state are
 also local and do not join portable JSON. Proxy certificate/SSH host-key policies remain
 supported portable profile fields; manual Android import warns about weakened verification.
@@ -235,7 +235,8 @@ Platform objects are optional. Unknown keys are allowed for forward compatibilit
 but known keys are strictly typed. Clients must discard unsupported platform fields
 after displaying the import notice described below. Android reports ignored browser
 settings and undocumented fields separately, at most once each per import. Browser
-fields are discarded and do not round-trip through Android.
+fields are discarded and do not round-trip through Android, except the legacy
+knock-host alias, which migrates to `proxy.knockHost`.
 
 ## Import, merge and export
 
@@ -262,8 +263,8 @@ notice categories are described below.
 Unsupported profiles may be skipped on import with a visible summary.
 
 Other Android input formats are not portable JSON: FoxyProxy JSON (`data` array;
-`https`/`ssl`, `hostname` or `address`, numeric/string port, `title`, `cc` and credentials),
-ProxyList (one HTTPS or `masque://` URL per non-comment line with percent-encoded `user:password`,
+`https`/`ssl`/`socks5`, `hostname` or `address`, numeric/string port, `title`, `cc` and credentials),
+ProxyList (one HTTPS, `socks5://` or `masque://` URL per non-comment line with percent-encoded `user:password`,
 optional `title`/`cc` query parameters), and SuperProxy's supported subset (same list
 with first nonempty line `# superproxy:proxylist:v1`). SuperProxy certificate pins
 are not imported. These formats have no stable IDs and create new profiles on manual import.
