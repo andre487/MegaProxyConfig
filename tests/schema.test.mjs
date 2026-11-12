@@ -6,8 +6,8 @@ const read = async file => JSON.parse(await readFile(new URL(`../${file}`, impor
 const ajv = new Ajv({ strict: true, allErrors: true })
 const android = ajv.compile(await read('schemas/android-v8.schema.json'))
 const shared = ajv.compile(await read('schemas/megaproxy-v8.schema.json'))
-test('Android baseline and additive browser fields remain compatible', async () => {
-  for (const file of ['android-v8', 'browser-v8']) {
+test('Shared examples and opaque platform extensions remain compatible', async () => {
+  for (const file of ['android-v8', 'browser-v8', 'windows-v8']) {
     const config = await read(`examples/${file}.json`)
     assert.ok(android(config), JSON.stringify(android.errors))
     assert.ok(shared(config), JSON.stringify(shared.errors))
@@ -31,16 +31,13 @@ test('mixed Android HTTPS and MASQUE retain separate custom TLS and QUIC JA3 fie
     }
   }
 })
-test('known platform fields, common requirements and jump chains are validated', async () => {
+test('Common requirements and jump chains are validated', async () => {
   const original = await read('examples/browser-v8.json')
   for (const change of [
     c => delete c.profiles[0].id,
     c => { c.profiles[0].proxy.port = 0 },
     c => { c.profiles[0].proxy.type = 'HTTPS_JUMP' },
     c => { c.routing.bypassLocalNetworks = 'yes' },
-    c => { c.browser.language = 'xx' },
-    c => { c.profiles[0].browser.knockHost = 'https://knock.example' },
-    c => { c.profiles[0].browser.bypass = ['a.example', 'a.example'] },
     c => { c.ssh = { maxChannels: 0 } },
     c => { c.profiles[0].proxy.password = 'secret\nheader' }
   ]) {
@@ -54,57 +51,8 @@ test('known platform fields, common requirements and jump chains are validated',
   assert.ok(shared(config), JSON.stringify(shared.errors))
 })
 
-test('selective routing is additive, validates both modes and rejects malformed fields', async () => {
-  const config = await read('examples/browser-v8.json')
-  for (const mode of ['domains', 'tabs']) {
-    config.browser.routing.mode = mode
-    assert.ok(shared(config), JSON.stringify(shared.errors))
-    assert.ok(android(config), JSON.stringify(android.errors))
-  }
-  for (const change of [
-    c => { c.browser.routing.mode = 'vpn' },
-    c => { c.browser.routing.enabled = 1 },
-    c => { c.browser.routing.domains = ['https://example.com'] },
-    c => { c.browser.routing.sites = ['example.com', 'example.com'] },
-    c => { c.browser.routing.domains = ['example.com:443'] },
-    c => { c.browser.routing.sites = 'example.com' }
-  ]) {
-    const invalid = structuredClone(config)
-    change(invalid)
-    assert.equal(shared(invalid), false)
-  }
-})
 
-test('subscriptions are optional and platform-compatible with validated catalog IDs and booleans', async () => {
-  const config = await read('examples/browser-v8.json')
-  assert.ok(shared(config), JSON.stringify(shared.errors))
-  assert.ok(android(config), JSON.stringify(android.errors))
-  for (const change of [
-    c => { c.browser.routing.subscriptions.throughProxy = 'yes' },
-    c => { c.browser.routing.subscriptions.autoUpdate = 1 },
-    c => { c.browser.routing.subscriptions.domainSources = ['../invalid'] },
-    c => { c.browser.routing.subscriptions.siteSources = ['youtube', 'youtube'] }
-  ]) {
-    const invalid = structuredClone(config)
-    change(invalid)
-    assert.equal(shared(invalid), false)
-  }
-  config.browser.routing.domains = ['**.example.com']
-  assert.ok(shared(config), JSON.stringify(shared.errors))
-})
 
-test('WebRTC and Firefox domain assignments are additive and validated', async () => {
-  const config = await read('examples/browser-v8.json')
-  config.browser.webRTC = 'disable_non_proxied_udp'
-  config.browser.routing.assignments = [{ domain: 'example.com', profileId: config.profiles[0].id }]
-  assert.ok(shared(config), JSON.stringify(shared.errors))
-  assert.ok(android(config), JSON.stringify(android.errors))
-  for (const mutate of [c => { c.browser.webRTC = 'invalid' }, c => { c.browser.routing.assignments[0].domain = '*.example.com' }, c => { delete c.browser.routing.assignments[0].profileId }]) {
-    const invalid = structuredClone(config)
-    mutate(invalid)
-    assert.equal(shared(invalid), false)
-  }
-})
 
 test('SOCKS5 is valid in both shared and Android contracts', async () => {
   const config = await read('examples/browser-v8.json')
@@ -123,7 +71,7 @@ test('SOCKS5 is valid in both shared and Android contracts', async () => {
 })
 
 
-test('MASQUE is valid in the shared contract with an optional typed path template', async () => {
+test('MASQUE is validated while browser template validation belongs to the browser', async () => {
   const config = await read('examples/browser-v8.json')
   config.profiles[0].proxy.type = 'MASQUE'
   assert.ok(shared(config), JSON.stringify(shared.errors))
@@ -132,7 +80,7 @@ test('MASQUE is valid in the shared contract with an optional typed path templat
   assert.ok(shared(config), JSON.stringify(shared.errors))
   for (const value of [42, 'x'.repeat(2049)]) {
     config.profiles[0].browser.masqueTemplate = value
-    assert.equal(shared(config), false)
+    assert.ok(shared(config), JSON.stringify(shared.errors))
   }
 })
 
@@ -188,19 +136,6 @@ test('HTTPS Jump also preserves the optional HTTP/3 preference', async () => {
   for (const validate of [android, shared]) assert.ok(validate(config), JSON.stringify(validate.errors))
 })
 
-test('dynamic list IDs and browser routing strategies share the browser contract', async () => {
-  const config = await read('examples/browser-v8.json')
-  config.browser.routing.subscriptions.domainSources = ['future_service', 'google_meet']
-  for (const strategy of ['manual', 'lists', 'profiles', 'tabs', 'failover']) {
-    config.browser.routing.strategy = strategy
-    assert.ok(shared(config), JSON.stringify(shared.errors))
-  }
-  config.browser.routing.strategy = 'unknown'
-  assert.equal(shared(config), false)
-  delete config.browser.routing.strategy
-  config.browser.routing.subscriptions.domainSources = Array.from({ length: 65 }, (_, i) => `source_${i}`)
-  assert.equal(shared(config), false)
-})
 
 
 test('shared HTTPS knock host is typed in Android and shared schemas without browser metadata', async () => {
@@ -217,5 +152,26 @@ test('shared HTTPS knock host is typed in Android and shared schemas without bro
     }
     delete proxy.knockHost
     assert.ok(validate(config), JSON.stringify(validate.errors))
+  }
+})
+
+test('platform extensions are opaque to the shared schema', async () => {
+  const config = await read('examples/browser-v8.json')
+  for (const name of ['android', 'browser', 'windows', 'futurePlatform']) {
+    config[name] = { version: 17, routing: { applicationIds: ['platform-specific'] }, arbitrary: true }
+    config.profiles[0][name] = { arbitrary: 'owned by the application' }
+  }
+  for (const validate of [shared, android]) assert.ok(validate(config), JSON.stringify(validate.errors))
+})
+
+test('HTTP/2 preference is typed and optional', async () => {
+  const config = await read('examples/browser-v8.json')
+  for (const value of [true, false]) {
+    config.profiles[0].proxy.preferHttp2 = value
+    assert.ok(shared(config), JSON.stringify(shared.errors))
+  }
+  for (const value of [1, 'true', null]) {
+    config.profiles[0].proxy.preferHttp2 = value
+    assert.equal(shared(config), false)
   }
 })

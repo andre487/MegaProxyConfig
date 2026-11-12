@@ -1,576 +1,104 @@
 # Portable configuration version 8
 
-## Required common fields
+## Common document
 
-The document is a JSON object with `schema: "net.megaproxy487.config"`, `version: 8`,
-and a nonempty `profiles` array (at most 1,000 profiles). The legacy schema identifier
-`dev.megaproxy.config` is accepted. Each profile needs a nonempty stable `id` (at
-most 256 characters) and `proxy` with `type`, `host`, and integer `port` (1–65535).
-IDs must be unique. Applied profile ID references must point to an existing profile or be
-null; clients may ignore references in unsupported settings they discard. JSON Schema validates structure; ID uniqueness by property and reference
-integrity require consumer checks. Older Android versions accept versions 1–8,
-but this schema specifies canonical version 8 rather than permissive legacy input.
+Require `schema: "net.megaproxy487.config"`, `version: 8` and 1�1,000 profiles.
+Accept the legacy schema identifier `dev.megaproxy.config`. Profile IDs are stable,
+unique, nonempty strings of at most 256 characters. Applied ID references must
+resolve to a profile; semantic validation belongs to consumers, beyond JSON Schema.
+Names, color indices, uppercase two-letter country codes and array order describe
+profile appearance. Existing local order is retained during merge; new IDs append.
 
-`name` is optional (up to 256 characters). `color` is the zero-based index into the
-Android palette; renderers wrap it into their palette. `countryCode` is empty or
-an uppercase ISO-style two-letter code. Array order is profile display order.
+Common types are HTTPS, HTTPS_JUMP, SSH, SSH_JUMP, SOCKS5 and MASQUE. Never silently
+convert an unsupported protocol or flatten a jump chain. Report unsupported profiles.
+Host is a hostname or IP literal without scheme/path/port; ports are 1�65535.
+Jump profiles require a separate host/port and optionally independent credentials;
+`sameAuthentication` defaults to true. SOCKS5 usernames may contain colons; HTTP
+Basic usernames cannot. SOCKS5 credentials must fit its 255-byte UTF-8 wire limit.
+The schema defines the other lengths, types and allowed values.
 
-`activeProfileId` records the selected profile. Manual import must not silently
-connect it. During subscription updates it is also a preferred replacement if the
-previously selected local profile disappears; a surviving local selection takes
-precedence. Preserve Direct/System mode. See the
-[browser update algorithm](subscription-protocol.md#browser-update-algorithm).
-`passwordsIncluded` and `privateKeysIncluded` describe export choices, not requirements
-that all profiles contain those keys. Never store real secrets in repository examples.
+`proxy.preferHttp2` and `proxy.preferHttp3` are optional booleans for HTTPS transports.
+HTTP/3 preference includes HTTP/2 fallback where supported. Clients must explain
+unsupported transport preferences rather than silently promise their application.
+`proxy.knockHost` is shared; the legacy profile browser knockHost is read only when
+the shared key is absent, including when the shared key is explicitly empty.
 
-## Configuration subscriptions
+## Platform extensions
 
-The optional root `subscription` property configures automatic HTTPS downloads,
-including Basic Auth credentials, interval and pause state. It is distinct from
-`browser.routing.subscriptions`, which distributes hostname lists. Import a full
-configuration once to bootstrap it; clients without support may ignore the field.
-See the [configuration distribution protocol](subscription-protocol.md) for field
-semantics, requests, responses, supported legacy formats and snapshot application.
+An application may define a platform-named object at document or profile level.
+The owning application validates and documents its fields, versions and semantics.
+The common schema does not enumerate platforms or validate their inner settings.
+Use `android`, `browser`, `windows`, or another unambiguous platform name as needed.
 
-## Proxy settings
+Android application selection (`routeAllApps`, `selectedPackages`) belongs to an
+Android routing section, not the shared routing contract. Existing root/profile
+`routing.routeAllApps` and `routing.selectedPackages`, and root `alwaysOnProfileId`,
+are legacy Android extensions. They remain readable as unknown fields for older
+files; other clients must not translate Android package IDs into local app rules.
+Migrating existing Android writers is owned by AndroidMegaProxy.
 
-Supported portable `proxy.type` values are `HTTPS`, `HTTPS_JUMP`, `SSH`, `SSH_JUMP`, `SOCKS5`, and `MASQUE`.
-`host` contains a hostname or IP address, without scheme, path or port. Android's
-current decoder rejects colon-containing hosts (including IPv6 literals); the schema
-allows IP literals for consumers supporting them. For cross-platform exports use
-DNS names or IPv4. `username` is optional, up to 4,096 characters; `password` is
-optional, up to 16,384. HTTPS uses Basic authentication. A browser may instead request
-credentials through its native proxy authentication dialog.
+Foreign sections and unknown fields are not retained for later export. Show one
+general import notice without exposing their names or values, then project onto
+supported fields. A future unsupported version of the local platform section must
+also be ignored as a whole; none of its settings may execute indirectly.
 
-### Shared knock host
+## TLS, SSH, DNS and routing
 
-`profiles[].proxy.knockHost` is an optional hostname/IP without a scheme, path,
-credentials or port (maximum 253 characters). Omission leaves an existing value
-unchanged during a merge; an explicit empty string disables it. For legacy input,
-use `profiles[].browser.knockHost` only when the shared key is absent. The shared
-key takes precedence even when empty. Export the shared key; browser-compatible
-producers may also write the legacy alias with the same value.
+Use the shared TLS identifiers DEFAULT, CHROME_ANDROID, FIREFOX_ANDROID,
+EDGE_ANDROID, RANDOMIZED, SAMSUNG_INTERNET, YANDEX_BROWSER and CUSTOM. These names
+are portable identifiers, not a promise of identical wire bytes across TLS stacks.
+Clients apply supported presets, reset unsupported ones to DEFAULT and notify the
+user. DEFAULT resolves to the client's current default and may change on update.
+Custom JA3 requires semantic and transport-specific validation. Global TLS settings
+select the preset; profile TLS fields may carry transport-specific custom data.
+Do not replace global TLS JA3 with a per-profile QUIC JA3.
 
-Android uses this field only for regular HTTPS/TCP connection diagnostics. It sends
-CONNECT to port 443 through the same proxy with the profile's credentials. An
-unmasked 407 proves authentication rejection; a successful CONNECT, HTML response
-or timeout cannot prove a decoy. Inconclusive probes do not replace the normal
-connection test. Never bypass the proxy or log addresses or credentials. Editing
-this diagnostic metadata does not reconnect a running VPN. HTTPS Jump, selected
-HTTP/3, MASQUE, SSH and SOCKS5 do not use this Android probe.
+SSH supports the shared fingerprint identifiers and AUTO/PASSWORD_ONLY/KEY_ONLY
+authentication. Implemented connection settings must affect the connection; unsupported
+ones must be reported. Client-specific SSH key-verification policy must be documented.
+Import must not imply enforcement of a host key that a client does not verify.
 
-Browser clients use the same host for their authentication workflow described
-below. Legacy browser clients may require the alias. Configuration delivery must
-preserve the shared field for Android when removing browser-only settings.
+DNS uses a named provider or `customDohUrl` with HTTPS DoH, TCP or UDP. Plain DNS
+endpoints require numeric IPs and an optional port. Clients document transport
+limits, DNS routing and local security approvals; importing a file cannot grant
+permissions or local trust approvals. Query tokens may be sensitive export data.
 
-Optional Android proxy fields: `privateKey` (unencrypted SSH key, up to 65,536
-characters), `sshProfile`, `trustedHostKey`, `acceptAnyHostKey`, and
-`allowInvalidProxyCertificate`. The last two deliberately weaken verification.
-Browsers cannot implement SSH or override proxy certificate verification; incompatible
-profiles must be reported and skipped rather than flattened into HTTPS.
+Shared routing includes `bypassLocalNetworks` (default true) and profile `allowIpv6`.
+Clients document whether the latter is enforceable; Windows ignores it and always
+allows IPv6, subject to ordinary explicit routing/block rules. No import disables
+the operating system's IPv6. Application selection is a platform extension.
 
-Jump types require `proxy.jump` with `host` and `port`. Optional fields are
-`sameAuthentication` (default true), `username`, `password`, `privateKey`,
-`trustedHostKey`, `acceptAnyHostKey`, and `allowInvalidProxyCertificate`.
-Never reinterpret a jump chain as a single proxy.
-
-HTTP is supported by the browser UI but not by current Android's type enum. An HTTP
-profile cannot be exported as an Android-compatible HTTPS profile. Consumers must
-reject that export explicitly; never silently change the protocol.
-
-SOCKS5 is a valid shared configuration protocol, even when a particular client does
-not implement it. Every client must recognize this value and either use SOCKS5 or
-display an explicit unsupported-protocol message. A client may skip incompatible
-profiles during import after informing the user; it must not silently discard them
-or reinterpret SOCKS5 as HTTP/HTTPS. The Android version 8 contract accepts SOCKS5; older Android builds without
-this implementation must report it as unsupported.
-
-BrowserMegaProxy supports SOCKS5 with proxy-side DNS resolution. Firefox supports
-username/password authentication; Chromium supports only SOCKS5 without credentials
-and must report this limitation when credentials are supplied. SOCKS5 usernames
-and passwords are limited to 255 UTF-8 bytes each. Colons are allowed in SOCKS5
-usernames; HTTP Basic usernames cannot contain colons. No HTTP Basic authorization
-header or HTTP proxy authentication dialog is used for SOCKS5.
-
-Android supports TCP CONNECT and UDP ASSOCIATE, on port 1080 by default. Leave
-both credentials empty for no authentication, or supply both username and password
-(1–255 UTF-8 bytes each). Supplying credentials requires RFC 1929 authentication;
-a server cannot downgrade this to an unauthenticated connection. SOCKS5 adds no
-encryption, certificate verification, TLS fingerprint or multiplexing. Application
-TLS and DNS-over-HTTPS retain their own encryption. Android sends DNS through its
-selected DoH provider over SOCKS5 TCP, and forwards other UDP through the relay
-returned by UDP ASSOCIATE. Relay replies must contain an IP address and a nonzero
-port; wildcard addresses use the already resolved proxy IP. A hostname relay is
-rejected without performing system DNS. Per-app routing, IPv6 policy, local-network
-bypass, profile failover and connection statistics still apply. The HTTP/3 preference
-and SSH authentication settings do not affect SOCKS5. No SOCKS5 Jump type is defined.
-ProxyList URLs use `socks5://host:1080` or `socks5://user:password@host:1080`.
-
-### MASQUE
-
-`proxy.type: "MASQUE"` is valid in the shared contract. Clients must recognize
-this value and either support it or explicitly report that MASQUE is unsupported
-or disabled. Import may skip these profiles after warning the user; clients must
-not silently reinterpret them as HTTPS. The Android baseline accepts MASQUE;
-Android's implementation is alpha. It uses Basic proxy authentication for TCP
-CONNECT and CONNECT-UDP, supports browser QUIC fingerprints, and keeps DNS on the
-configured DoH provider. MASQUE is a standalone endpoint, not a jump-chain type.
-Browser-specific path templates are not applied by Android.
-
-Android selects the outer TLS/QUIC preset from document-level `tls.fingerprint`;
-DEFAULT resolves to CHROME_ANDROID. MASQUE supports CHROME_ANDROID,
-FIREFOX_ANDROID, RANDOMIZED and CUSTOM; unsupported presets must fail explicitly.
-These settings describe the connection to the proxy, not the fingerprint of the
-browser inside the tunnel. With CUSTOM, HTTPS uses document-level `tls.customJa3`,
-while MASQUE uses `profiles[].tls.customJa3`. The latter must be a QUIC-compatible
-JA3, including TLS 1.3 and the QUIC transport-parameters extension (57). Keep both
-strings separate in mixed HTTPS/MASQUE files and failover: Android must not replace
-a profile's QUIC JA3 with the global TLS JA3. Per-profile `tls.fingerprint` remains
-portable profile data but does not override Android's global preset selection.
-The mixed [Android example](../examples/android-v8.json) illustrates this layout.
-JSON Schema checks field types and lengths; consumers validate JA3 semantics and
-transport capabilities when connecting. Missing export secrets or incomplete
-CUSTOM fields may require user input before connection.
-
-The proxy host and port identify the HTTP/3 (QUIC) proxy endpoint. Optional profile
-`browser.masqueTemplate` specifies the CONNECT-UDP URI path template (maximum
-2,048 characters); its default is
-`/.well-known/masque/udp/{target_host}/{target_port}/`. It must start with a single
-`/`, contain both `{target_host}` and `{target_port}`, and contain no other template
-variables, whitespace, control characters, backslashes, or fragments. Consumers
-must validate these semantics beyond JSON Schema's string and length checks.
-
-BrowserMegaProxy exposes experimental MASQUE support only in Firefox 146+,
-disabled by default behind a local settings checkbox. The flag is not imported
-from configuration files. When disabled, MASQUE profiles are skipped with an
-explicit warning. CONNECT-TCP HTTP/HTTPS scenarios are tested; successful
-CONNECT-UDP interoperability with GOST is not yet confirmed. Username/password
-fields are currently disabled because the tested Firefox supplies the Basic
-header for CONNECT-TCP but omits it for CONNECT-UDP. Knock hosts are not used.
-A trusted TLS certificate and HTTP/3 support are required.
-
-## Optional Android fields
-
-These can occur at the document level:
-
-| Object/key | Fields / values |
-|---|---|
-| `tls` | `fingerprint`, `customJa3` (up to 8,192 characters) |
-| `ssh` | `fingerprint`, `authMode`: AUTO/PASSWORD_ONLY/KEY_ONLY; `keepaliveSeconds`: 0–3600; `maxChannels`: 1–256; `rotationMinutes`: 0–1440; `rotationMb`: 0–10240 |
-| `failover` | `mode`: DISABLED/SELECTED/ALL; `profileIds`: ordered unique IDs |
-| `routing` | `routeAllApps`, `selectedPackages` (Android package names), `bypassLocalNetworks` (default true) |
-| `alwaysOnProfileId` | Android Always-on selection, nullable |
-| `diagnosticLogLimitMb` | Integer 1–100 |
-
-Profiles additionally support `tls`, `dns`, and `routing`.
-Profile `routing` adds `allowIpv6` (default false); the other routing keys match the
-document object. Android applies global routing/TLS/SSH settings when connecting,
-except that MASQUE keeps its per-profile QUIC `tls.customJa3` as described above.
-
-TLS fingerprints: DEFAULT, CHROME_ANDROID, FIREFOX_ANDROID, EDGE_ANDROID, RANDOMIZED,
-SAMSUNG_INTERNET, YANDEX_BROWSER, CUSTOM. Some presets are unavailable in current
-Android builds and revert to DEFAULT. CUSTOM selects `customJa3`; a valid JA3 string
-requires a semantic parser beyond JSON Schema's length check.
-
-SSH fingerprints: DEFAULT, OPENSSH_TERMUX, CONNECTBOT, JUICESSH, TERMIUS_ANDROID.
-DNS providers: CLOUDFLARE, GOOGLE, QUAD9, YANDEX, YANDEX_SAFE, YANDEX_FAMILY, CUSTOM.
-CUSTOM uses the legacy `dns.customDohUrl` string (up to 2,048 characters). Android accepts
-`https://` for DoH, `tcp://` for plain TCP DNS and `udp://` for plain UDP DNS. Examples:
-`https://dns.example/dns-query`, `tcp://192.0.2.53:53`, `udp://[2001:db8::53]:53`.
-Plain endpoints require a numeric IPv4 or bracketed IPv6 address, no path or query,
-and an optional port (default 53). The field name and version 8 schemas are unchanged;
-clients without plain DNS support must not reinterpret TCP/UDP endpoints as DoH.
-
-| Android DNS mode | Route and encryption |
-|---|---|
-| DoH | Through the proxy chain; HTTPS to the resolver |
-| TCP DNS | Through the proxy chain, including LAN resolvers; plaintext after the proxy |
-| UDP DNS with actual MASQUE/HTTP3 | CONNECT-UDP through the proxy; plaintext after the proxy |
-| UDP DNS with SOCKS5 | UDP ASSOCIATE; SOCKS5 adds no encryption |
-| UDP DNS with actual HTTPS/TCP or SSH | Direct protected socket outside the VPN; plaintext throughout |
-
-SOCKS5 adds no encryption to TCP DNS either. HTTPS profiles preferring HTTP/3 use the
-actual selected transport. A failed tunneled UDP query never retries directly.
-Plain DNS and CUSTOM have no public DoH fallbacks; filtering presets must not fall back
-to unfiltered providers. Other DoH presets race their permitted alternatives 200 ms apart,
-using the first valid response and cancelling losers. Slow queries may reach multiple providers.
-Proxy bootstrap uses its own provider list before VPN creation, independently of profile DNS.
-
-Plain DNS requires local **Insecure DNS** confirmation. Allowing invalid DoH certificates
-also requires local confirmation and never changes proxy/jump trust. These approvals
-are not portable fields: import or subscription updates cannot enable them. An unchanged
-resolver retains its local approvals; a changed resolver requires confirmation again.
-Query tokens in custom DoH URLs remain in JSON even when passwords are omitted; exports
-containing these URLs must be treated as sensitive.
-Android's MTU, source-application validation mode/level, language,
-traffic units, update preferences, caches and runtime state are
-also local and do not join portable JSON. Proxy certificate/SSH host-key policies remain
-supported portable profile fields; manual Android import warns about weakened verification.
-
-These fields are optional Android settings; their presence does not mean a browser
-can implement them. Browser TLS, DNS, IPv6 and transport multiplexing are controlled
-by the browser rather than this extension.
-
-## Optional browser fields
-
-Document `browser` contains `theme` (system/light/dark) and `language` (auto/en/ru).
-Profile `browser` contains:
-
-| Field | Meaning |
-|---|---|
-| `knockHost` | Legacy alias of shared `proxy.knockHost`; used only when the shared key is absent |
-| `bypass` | Domain/IP exclusions, each domain also matches its subdomains |
-| `masqueTemplate` | Optional MASQUE CONNECT-UDP path template; see MASQUE above |
-| `authMode` | auto/challenge; retained for legacy imports; saved credentials in Firefox use immediate CONNECT authentication |
-
-Local-network bypass uses the shared `routing.bypassLocalNetworks` field. It defaults
-to true, independent of custom domain exclusions. A knock host must not be bypassed.
-Firefox skips automatic knock when both credentials are saved, while manual knock
-remains available. Chromium needs automatic knock even with saved credentials. With missing credentials both browsers open knock to show
-the browser's native authentication prompt. A configured knock host is required for
-that workflow; credentials entered into the browser prompt are not readable by the
-extension and are not copied into its configuration.
-
-Platform objects are optional. Unknown keys are allowed for forward compatibility
-but known keys are strictly typed. Clients must discard unsupported platform fields
-after displaying the import notice described below. Android reports ignored browser
-settings and undocumented fields separately, at most once each per import. Browser
-fields are discarded and do not round-trip through Android, except the legacy
-knock-host alias, which migrates to `proxy.knockHost`.
+Failover modes are DISABLED, SELECTED and ALL, with unique profile IDs. Clients
+document candidate ordering and supported failure conditions. Authentication and
+certificate failures must not silently bypass the selected proxy.
 
 ## Import, merge and export
 
-Stable IDs are generator-controlled. Reimport updates matching profiles and appends
-new IDs; existing local order is retained. Omitted `password` or `privateKey` preserves
-stored secrets; explicit empty strings clear them. The same rule applies to jump
-secrets. Both clients preserve an omitted proxy password only when the protocol,
-normalized host, port and username are unchanged, to avoid reusing a secret for a
-different endpoint or account. Android applies the same recipient check to private keys
-and separate Jump credentials; shared Jump authentication requires both endpoints to
-remain unchanged. Profiles absent from a file are retained unless
-the user explicitly selects them for removal. Imported active/always-on IDs do not authorize automatic connection.
-Review connection-affecting changes before applying an import.
+Validate before committing atomically. Replace matching IDs, append new IDs and
+retain missing local profiles unless removal was explicitly selected. Absent
+supported options retain their current values; false and empty arrays apply.
+Manual import never authorizes connection by itself.
 
-Exports must provide a visible choice for including passwords, with an opt out
-available before the file is saved. BrowserMegaProxy includes passwords by default
-and exposes an **Include passwords** checkbox; clearing it omits both proxy and
-subscription passwords and sets `passwordsIncluded` to false. Programmatic callers
-may default to omitting passwords. Private keys require an explicit opt in;
-BrowserMegaProxy does not export them. URL query tokens are not removed by the
-password opt out, so passwordless exports can still contain sensitive URLs. Unsupported documented fields and undocumented fields produce
-an import notice and are discarded; neither is retained for export. The Android
-notice categories are described below.
-Unsupported profiles may be skipped on import with a visible summary.
+Omitted passwords/private keys retain existing secrets only when protocol, normalized
+host, port and username match. Shared jump authentication requires both endpoints
+to match; independent jump secrets use the jump identity. Explicit empty strings
+clear secrets. Missing subscription passwords follow the same URL/account rule.
+Credentials must never migrate to a replacement recipient.
 
-Other Android input formats are not portable JSON: FoxyProxy JSON (`data` array;
-`https`/`ssl`/`socks5`, `hostname` or `address`, numeric/string port, `title`, `cc` and credentials),
-ProxyList (one HTTPS, `socks5://` or `masque://` URL per non-comment line with percent-encoded `user:password`,
-optional `title`/`cc` query parameters), and SuperProxy's supported subset (same list
-with first nonempty line `# superproxy:proxylist:v1`). SuperProxy certificate pins
-are not imported. These formats have no stable IDs and create new profiles on manual import.
-Subscription refreshes instead reuse unique local matches as described in the
-[distribution protocol](subscription-protocol.md).
-ProxyList carries endpoint/credential fields, not global TLS settings or custom JA3;
-use portable JSON to preserve separate HTTPS and MASQUE fingerprints.
+Provide visible password and private-key export choices before saving. Default
+checkbox states are client policy and must be accurately documented; an opt out
+must be available. Set passwordsIncluded/privateKeysIncluded accordingly. Omit
+secret keys when excluded. Files are not encrypted; query tokens are not removed
+by the password checkbox. Unknown fields must not carry hidden tokens into export.
 
-## Browser implementation limits
+Export current common settings, not stale copies retained from a prior import.
+Do not write contradictory common/platform copies of the same supported setting.
+Legacy platform aliases may be read; the common field takes precedence when both
+are present. Platform-only choices stay in the owning section.
 
-BrowserMegaProxy does not implement automatic proxy failover or per-domain
-profile assignments. The Android `failover` object is discarded with the general
-unknown-fields warning. Configuration-source failover through `subscription.fallbackUrls`
-is supported and is independent of proxy failover. Exact socket/traffic-byte
-measurements are unavailable.
+Clients may also import legacy MegaProxy versions, FoxyProxy, ProxyList or SuperProxy
+subsets. These formats cannot carry all settings. Document supported formats and
+warn about skipped entries. Prefer v8 JSON for complete supported transfer.
 
-FoxyProxy include/exclude URL rules are not part of the portable configuration.
-BrowserMegaProxy reports their omission in the import review before applying the
-connection profile to the whole browser. PAC entries are skipped.
-
-On manual import, without a `browser` block in an updated Android profile, BrowserMegaProxy preserves
-the existing local knock and domain exclusions. Subscription snapshots likewise
-apply only explicitly supplied supported preferences; omitted browser preferences,
-routing fields, list subscription options and profile browser options remain local.
-Explicit false values and empty arrays replace the corresponding settings.
-Per-profile Android `routing`, including its local bypass flag, is not applied by
-the extension; only document-level `routing.bypassLocalNetworks` is supported.
-Unsupported imported Android settings
-are discarded rather than stored in the browser. The current browser implementation
-checks canonical version 8 imports and exports with a standalone validator generated
-from the pinned schema; older versions are normalized by the legacy import parser.
-
-## Unknown fields and import projection
-
-The reference browser behavior is: if a receiving client encounters any fields it
-does not import, show one general
-warning in the import review: **Configuration contains unknown fields.** The Russian
-UI text is **Конфигурация содержит неизвестные поля**. Display it once per import,
-regardless of the number of fields. Do not list field names, values or platforms.
-This includes documented fields unsupported by that browser client and undocumented
-keys. Android instead shows at most one notice for ignored browser settings and one
-for undocumented fields in its existing import result. It may name the browser
-settings category but must not reveal field names or values; a browser object with
-undocumented fields can produce both notices. Neither category requires an extra
-confirmation. Unsupported fields are not imported, retained in storage or included in later exports.
-
-Schema `additionalProperties: true` permits reading future documents; it does not
-mean unknown fields should be retained. Validate structure first, then project the
-configuration onto the receiving client's supported fields. Preserve common supported
-fields, omitted-secret merge semantics, stable IDs and local order. Unsupported
-transports are still reported as skipped profiles; removing jump or SSH fields must
-never reinterpret a chain as a single HTTPS proxy.
-
-BrowserMegaProxy discards Android-specific TLS, DNS, SSH, per-app routing, Always-on
-and logging settings and presents the general warning. Android discards `browser`
-objects and presents the browser-settings notice, adding the undocumented-fields
-notice only when needed. Older Android versions may silently discard these settings;
-that legacy behavior is not the current import-review contract.
-
-## Selective browser proxy routing
-
-`browser.routing` is optional and browser-only. It does not change Android routing.
-Omitting it keeps the existing behavior: all eligible requests use the active proxy.
-
-| Field | Type / default | Meaning |
-| --- | --- | --- |
-| `enabled` | boolean, `false` | Enable selective routing. When false, all eligible requests use the active proxy. |
-| `mode` | `domains` or `tabs`, default `domains` | Destination-domain routing (Chromium and Firefox) or tab-based split proxy (Firefox only). |
-| `domains` | string array, default `[]` | Destination hostname patterns used in `domains` mode. |
-| `sites` | string array, default `[]` | Top-level site hostname patterns selecting tabs automatically in `tabs` mode. |
-
-`browser.routing.strategy` optionally selects `manual`, `lists` or `tabs`.
-`manual` uses manual destination patterns; `lists` uses domain-list subscriptions;
-`tabs` uses Firefox manual tab-site patterns. Explicit strategies are exclusive:
-site subscriptions remain inactive with `tabs`; legacy tab routing without a
-`strategy` combines manual sites and selected `siteSources`. It overrides `mode`:
-`tabs` selects tab routing, the other values select destination routing. Inactive
-lists are retained for later switches. Without a strategy, the client derives it
-from `mode` and the configured lists.
-
-Legacy `profiles` and `failover` values remain valid in the schema but are not
-implemented by current BrowserMegaProxy. Both produce the general unknown-fields
-warning and normalize to `manual`; `failover` additionally disables selective
-routing. They do not authorize switching proxies. Chromium downgrades tab routing
-with its explicit split-proxy warning.
-
-The two lists are independent and survive mode switches. Each contains at most
-1,000 patterns, each at most 253 characters. In destination-domain mode, exact hostnames match only themselves. In Firefox
-split-proxy mode, plain hostnames also match all their subdomains.
-`**.example.com` matches both `example.com` and all its subdomains.
-Other `*` patterns match zero or more characters, including dots: `*.example.com` matches
-subdomains but not `example.com`; `example.*` matches several suffixes. Matches
-cover the entire hostname and ignore case and a trailing dot. Wildcard patterns
-use ASCII DNS labels; literal internationalized hostnames are normalized to IDNA
-by the extension. Schemes, ports, paths and credentials are forbidden.
-An enabled mode without a matching list entry or Firefox profile assignment connects directly.
-
-In Firefox `tabs` mode, requests attributed to a selected tab use the proxy,
-including frames, scripts and resources on other domains. Top-level navigation
-and redirects re-evaluate the site's pattern. Requests without a tab connect
-directly. Firefox's popup can override an individual tab and reload it; these
-session-only choices last until the tab closes or routing settings change.
-Browser tab IDs and manual overrides are never exported.
-
-The popup can add the current hostname to the list for the current mode, enable
-selective routing and reload that tab. Previously opened connections are not
-migrated; reload affected tabs after changing routing settings. Local-network
-and profile bypass rules have priority in both modes. Required knock requests
-still use the proxy, and connection checks temporarily route their own traffic
-through the active proxy without changing the saved lists.
-
-Chromium has no tab-based routing UI. When importing a configuration whose
-`browser.routing.mode` is `tabs`, it **must show an explicit warning** that Firefox
-split proxy is unsupported in Chromium, ignore `sites`, switch to `domains`, and
-use the supplied `domains` and `enabled` values. It must not turn `sites` into
-proxy destination rules: that would change the meaning. An enabled empty domain
-list therefore connects directly. The imported/exported Chromium configuration
-contains the effective `domains` mode, not unsupported tab rules.
-
-Suggested English warning: "This configuration uses Firefox split proxy by tab,
-which Chromium does not support. Tab site rules will not be imported;
-destination-domain routing will be used instead. An empty domain list connects
-directly."
-
-Chromium's PAC resolver has an additional platform restriction: localhost and
-link-local addresses always bypass the proxy, even when `bypassLocalNetworks` is
-false. Selective Chromium routing must describe this limitation in its UI and
-must not claim such traffic was proxied. Other local ranges can still be proxied.
-The ordinary, non-selective fixed-server mode can override the implicit bypass.
-See [Chromium proxy documentation](https://chromium.googlesource.com/chromium/src/+/HEAD/net/docs/proxy.md#overriding-the-implicit-bypass-rules).
-
-## Browser domain-list subscriptions
-
-`browser.routing.subscriptions` is an optional browser-only object. It adds domain
-lists from [itdoginfo/allow-domains](https://github.com/itdoginfo/allow-domains), the
-same community source used by Podkop. Only domain entries are consumed; IP
-addresses, CIDRs, URLs and invalid lines are ignored.
-
-| Field | Default | Meaning |
-| --- | --- | --- |
-| `domainSources` | `[]` | Catalog IDs to add to destination-domain routing. |
-| `siteSources` | `[]` | Catalog IDs to select Firefox tabs by top-level site. |
-| `autoUpdate` | `true` | Refresh daily while the browser is running; retry failures hourly. |
-| `throughProxy` | `false` | Fetch lists and popularity data through the active MegaProxy profile. Without an active profile this option fails, without direct fallback. |
-
-Source IDs match `[a-z0-9][a-z0-9_-]{0,63}`, with at most 64 unique IDs per mode.
-The extension resolves them through its bundled/refreshed catalog; valid IDs
-absent from the catalog remain selected but cannot supply a list until available. Sources are selected
-independently for the two modes; selecting a source does not enable selective
-routing automatically. Save preferences before using the manual update button.
-A change in subscriptions triggers an update when auto-update is enabled. With
-auto-update disabled, use the manual update button after import or source changes. When successfully updated
-lists change the effective rules of an active connection, show the connection-update
-notice described in the [browser update algorithm](subscription-protocol.md#browser-update-algorithm).
-Legacy Firefox tab routing without an explicit strategy may also use `siteSources`;
-explicit `tabs` keeps automatic site lists inactive.
-
-Normalize DNS names to lowercase IDNA and remove trailing dots. Generalize each
-listed domain to a single `**.domain` rule covering itself and all subdomains.
-Remove duplicates and descendants already covered by a listed ancestor.
-Do not guess a registrable parent or expand to a parent missing from the source:
-`a.example.com` alone becomes `**.a.example.com`, not `**.example.com`.
-User-entered patterns remain separate and retain their existing semantics.
-
-The effective limit is 1,000 rules per mode, including manual patterns. Manual
-patterns take priority and are never trimmed by subscription updates. Rank the
-remaining subscription domains by [Tranco](https://tranco-list.eu/), downloading
-popularity data only when truncation is needed. Use the exact hostname's rank,
-otherwise the nearest ranked parent with at least two labels. This is a coarse
-proxy for popularity, especially for shared hosting and service subdomains.
-Unranked domains follow ranked domains and use ASCII lexicographic order to make
-selection reproducible; absence from the ranking does not prove unpopularity.
-Warn explicitly with the number of dropped rules. Dropped domains connect
-directly unless another routing rule selects them.
-
-Tranco downloads normally use the third-party daily GitHub mirror
-[wangmm001/tranco-top1m-cache](https://github.com/wangmm001/tranco-top1m-cache),
-`data/current.version.txt` and `data/current.csv.gz`. Decompress gzip using the
-browser's native `DecompressionStream`; validate the rank/domain CSV. If the
-mirror fails, use the official `https://tranco-list.eu/top-1m-id` and
-`https://tranco-list.eu/download/{id}/1000000` endpoints. If both fail, use cached
-matching ranks or alphabetical order and show a ranking-unavailable warning.
-Only complete, validated list updates replace the previous snapshot; any source
-failure retains the last successful snapshot and shows an error. Downloads are
-bounded to 4 MiB and 200,000 lines per domain source, 32 MiB of decompressed
-ranking CSV, with a 30-second timeout per request.
-
-Preferences are exported; cached lists, download errors, timestamps and ranking
-intersections are local client data and are not exported. Import needs an update
-to obtain the source contents. Chromium also warns explicitly and discards `sites` and `siteSources` if they
-contain Firefox tab rules while `mode` is `domains`, preserving `domainSources`
-and download preferences.
-
-When updating through a proxy, do not inject proxy credentials into HTTP origin
-headers; use the browser's proxy authentication. In Chromium, download routing
-requires temporary host-based proxy settings and therefore also affects other
-requests to the source hosts during the update. Restore the saved routing in
-all success and failure paths. Chromium PAC's implicit localhost/link-local
-bypass also applies during these temporary settings. Firefox can select the
-transport for individual extension download requests. No user's browsing
-history or custom domain list is uploaded to ranking providers: fetch the public
-ranking and compare locally.
-
-Tranco attribution: Victor Le Pochat, Tom Van Goethem, Samaneh Tajalizadehkhoob,
-Maciej Korczynski, and Wouter Joosen (2019), *Tranco: A Research-Oriented Top Sites
-Ranking Hardened Against Manipulation*, NDSS,
-[doi:10.14722/ndss.2019.23386](https://doi.org/10.14722/ndss.2019.23386).
-
-## Domain-to-profile assignments
-
-`browser.routing.assignments` is optional (default `[]`, maximum 1000), with objects
-`{ "domain": "example.com", "profileId": "stable-profile-id", "includeSubdomains": true }`.
-`domain` and `profileId` are required. `includeSubdomains` is optional and defaults
-to true; false matches only the exact hostname. Normalize international hostnames
-to ASCII. Reject duplicate normalized domains and missing profile references.
-The reserved profile ID `DIRECT` means an explicit direct rule.
-
-These fields are retained in the shared schema for compatibility with older
-configurations. Current BrowserMegaProxy validates their shape, discards all
-assignments and shows the general unknown-fields warning in both browsers. It
-does not route individual domains through independently assigned profiles. The
-unsupported assignments are not retained in storage or exported. References in
-ignored assignments do not select or connect profiles. Android ignores the
-browser routing block.
-
-## WebRTC privacy preference
-
-`browser.webRTC` is optional, default `browser`. Supported values:
-
-- `browser`: release the extension's control and use browser preferences.
-- `default`, `default_public_and_private_interfaces`,
-  `default_public_interface_only`, `disable_non_proxied_udp`: native WebRTC IP
-  handling policies, supported by desktop Chromium and Firefox.
-- `proxy_only`, `disabled`: Firefox-only; the latter disables peer connections.
-
-The preference applies browser-wide, including sites routed directly. Applying
-it requires the optional `privacy` permission and a controllable browser setting.
-Chromium warns and discards Firefox-only values. Imports cannot silently grant
-permissions. Browser sync leaves the local privacy preference unchanged if the
-required permission is absent. No protocol/header modification substitutes for
-this native browser preference.
-
-## Browser synchronization and URL import
-
-Synchronization is enabled by default through `storage.sync`; the browser's
-account and sync preferences determine whether data travels between devices.
-Passwords are included by default, with a separate opt-out. Sync consent and
-password consent are local client preferences, not portable configuration fields.
-The active connection, statistics, downloaded list caches and permissions remain
-local. The most recently published complete configuration wins; clients publish
-chunks before a revision pointer and reject incomplete/invalid snapshots.
-Clients preserve local configuration on quota or validation errors and display
-an error. Password opt-out excludes secrets from published data and from incoming
-snapshots; omitted passwords preserve existing local credentials.
-
-URL import downloads a configuration once using an HTTP(S) URL without embedded
-credentials, under the current routing rules. Enforce a 1 MiB streaming limit and
-a timeout; optional Basic Auth requires HTTPS, rejects redirects and treats either
-missing credential as empty when the other is present. URL imports send the client
-and application-version headers described in the [distribution protocol](subscription-protocol.md).
-Validate through the same parser and schema as file import. Show the
-same import review and compatibility warnings before applying any changes.
-
-### Optional HTTP/3 preference
-
-`profiles[].proxy.preferHttp3` is an optional boolean, default `false`. Android
-exposes it as “Prefer HTTP/3 α” on `HTTPS` and `HTTPS_JUMP` profiles. It tries MASQUE on
-the same hostname and numeric UDP port, with the profile credentials and
-certificate policy. The server must provide separate TCP HTTPS and UDP MASQUE
-listeners. HTTP/3 requires MASQUE datagrams and Extended CONNECT settings.
-
-If QUIC is unavailable, settings are unsupported, or the configured fingerprint
-is unavailable for QUIC, Android selects ordinary HTTPS (HTTP/2 or HTTP/1.1).
-Certificate validation, authentication, socket protection and unknown errors
-remain terminal, including access-denied responses. CONNECT-UDP 404/405/501 and
-a missing Capsule-Protocol header allow HTTPS fallback. The optional probe is
-bounded to three seconds. Selection occurs once per session; existing connections are
-never transferred between transports. HTTPS fallback blocks ordinary UDP; DNS
-continues through DoH. The app shows the selected transport and fallback warning.
-
-The preference is ignored for other types; it does not
-change the explicit `MASQUE` type, which requires HTTP/3 and never falls back.
-HTTPS uses the document-level TLS/JA3 settings for both attempts. A custom JA3
-that cannot represent QUIC uses HTTPS; separate MASQUE profiles retain their own
-QUIC-compatible JA3. JSON preserves the preference; plain proxy URLs do not.
-Older consumers may ignore this additive field.
-
-For `HTTPS_JUMP`, both nodes must offer HTTPS/TCP and MASQUE/UDP on the same
-numeric port. QUIC to the exit is encapsulated in CONNECT-UDP through the jump;
-the exit hostname is resolved by the jump, never directly by Android. Each
-hop uses its own credentials and certificate policy, including the existing
-shared-authentication option. If either hop lacks the required support, the
-entire chain falls back to HTTPS/TCP through the jump; there is no direct path
-to the exit. Authentication and certificate errors at either hop are terminal.
-
-Nested QUIC requires a usable outer path MTU in both directions. Android checks
-both directions within the bounded optional probe and derives the inner QUIC
-packet limit from the available outer budgets minus QUIC/CONNECT-UDP framing.
-It warms the exit's receive path before selection, accounting for PMTU convergence
-and the server's conservative DATAGRAM budget. A confirmation round trip follows
-the probe ACK window so initial browser UDP replies fit too. The browser TLS/JA3
-preset is preserved while padding and receive-MTU parameters adapt to encapsulation.
-Firefox Jump falls back
-because its 1200-byte DATAGRAM limit cannot fit the required nested QUIC packets.
-
-## Field coverage
-
-See the [field reference](field-reference.md) for the complete serialization groups,
-client capabilities and deliberately local settings.
+Configuration refresh behavior is defined in [subscription-protocol.md](subscription-protocol.md).
+Application update packages and their installer/store mechanisms are outside this configuration contract.

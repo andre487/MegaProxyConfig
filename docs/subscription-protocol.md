@@ -77,7 +77,7 @@ exporting the resulting settings produces the same root property.
 
 ## Subscription source replacement
 
-Both clients allow a trusted canonical configuration to update its own
+Clients allow a trusted canonical configuration to update its own
 subscription source list. On bootstrap from a URL, a root `subscription` object
 may replace the dialog's source URLs while retaining the credentials and update
 preferences supplied in that dialog. Subsequent refreshes use the same rule:
@@ -147,7 +147,7 @@ A successful response is 200 with a complete UTF-8 snapshot. MegaProxy version 8
 JSON is the canonical representation, served as `application/json`. The snapshot
 must pass schema, unique-ID, reference and client-capability checks. It need not
 repeat `subscription`. Downloaded credentials, interval and enabled flag never
-replace the corresponding local subscription preferences. Both clients may replace
+replace the corresponding local subscription preferences. Clients may replace
 source URLs using the rules above.
 
 Clients may additionally accept formats supported by their manual importer. No
@@ -175,7 +175,7 @@ restart. Provide pause, manual refresh, last success, successful source and visi
 
 Replace subscription-owned profiles and remove those absent from the next valid
 snapshot. Keep separately added profiles. Preserve local connection mode and the
-selected profile while it still exists. If that selected profile disappears, use
+selected profile while it still exists, including no selection. If that selected profile disappears, use
 the downloaded `activeProfileId` as a preferred replacement when it names an
 importable profile, otherwise select the first importable profile in snapshot
 order. The field already exists in version 8; no new preference field is needed.
@@ -185,9 +185,8 @@ BrowserMegaProxy reuses a uniquely matching name, then a unique type/host/port
 endpoint; ambiguous or completely changed profiles receive new local IDs.
 
 Apply explicitly supplied supported settings represented by the source format.
-Canonical MegaProxy snapshots preserve omitted browser preferences, including
-within partially supplied routing and list-subscription objects and per-profile
-browser options. Explicit false values and empty arrays replace their settings.
+Canonical MegaProxy snapshots preserve omitted supported preferences, including
+partially supplied nested objects and per-profile options. Explicit false values and empty arrays replace their settings.
 Formats without application preferences leave them unchanged. Omitted exported passwords retain
 saved credentials according to ordinary import semantics; explicit empty values
 clear them. Unsupported profiles and fields produce warnings while supported
@@ -196,137 +195,42 @@ Validate and apply atomically; persistence or native proxy-setting failures roll
 back the update. Failed updates must not remove working profiles or disconnect
 an otherwise unchanged active connection.
 
-## Android update behavior
+## Client application and runtime behavior
 
-AndroidMegaProxy sends `X-MegaProxy-Client: android` and its installed app version
-in `X-MegaProxy-Version`. Subscription credentials and URL query tokens are stored
-with Android Keystore encryption. Settings, ownership and status remain local and
-are excluded from Android backup. JSON exports include only the portable definition;
-its password follows **Include passwords**, while URL query tokens remain present.
+The protocol is shared by all clients. Platform APIs, storage encryption, scheduling,
+notification permissions and applying live connections are owned by each application.
+No platform-specific settings schema is defined by this protocol.
 
-Settings provides primary and up to seven backup HTTPS URLs, separate optional
-Basic Auth, interval, pause, **Update now**, last success, successful source index
-and warning/error status. Importing a canonical configuration with `subscription`
-bootstraps ownership of its imported profiles; configuring a new subscription in
-Settings initially owns no existing profiles. A conflicting canonical ID belonging
-to a separate local profile fails that source, preserving the local profile.
-Android exports all profiles together with the portable subscription definition.
-Reimporting that file adopts all imported profiles into the subscription, including
-formerly local profiles; a later refresh can remove them if absent from the feed.
-To transfer profiles without adopting them, omit the root `subscription` property;
-an existing subscription on the receiver is then preserved.
-Legacy imports reconcile only previously owned profiles by unique name, then
-unique type/host/port. Supported bodies are the same as Android manual imports:
-MegaProxy JSON, FoxyProxy JSON, ProxyList and SuperProxy text. ZeroOmega JSON is
-not supported. Downloaded subscription definitions replace source URLs only, retaining
-local Basic Auth, interval and pause state under the common source-replacement rules.
-Changing or removing local settings while downloading invalidates that download.
+1. Download the primary source, then backups in order. Manual refresh works while
+   paused; background refresh does not. Keep the previous working state on failure.
+2. Validate the supported configuration and ID references. Project onto supported
+   common fields and the receiver's own platform section. Report discarded fields
+   and fingerprint resets in the refresh status; do not log names, credentials or
+   contents of discarded fields. A warning does not invalidate otherwise usable profiles.
+3. Update matching canonical IDs and track subscription ownership. Remove only
+   missing profiles previously owned by the subscription. Keep unrelated local IDs.
+   A matching canonical ID identifies the same profile; replacing it adopts that ID.
+   Legacy formats reconcile only unique matches among previously owned profiles.
+4. Apply only supplied supported preferences, preserving omitted nested values.
+   Preserve local source credentials, interval and pause state when replacing URLs.
+5. Preserve the selected profile if it survives, including a null selection, and
+   preserve Direct/System/Proxy mode, connection intent and startup settings.
+   If a selected profile disappears, prefer the imported active ID, otherwise the
+   first importable profile. Import is not authorization to connect or configure startup.
+6. Commit settings, profiles, ownership and successful-source status atomically.
+   If local subscription settings change during a download, discard the stale result.
+7. Compare effective network settings. A change to active connection settings needs
+   a visible indication of how to apply it. A tunnel client may keep the established
+   tunnel and request reconnect; a browser may apply settings to new requests.
+   Neither may claim to migrate already established streams. Metadata-only changes
+   do not require reconnection. Failed refreshes leave a working connection intact.
+8. Keep ownership, timestamps, warning state and connection notices local; do not
+   export them. Notification permission or delivery failure must not prevent refresh.
 
-Android schedules persisted, network-constrained one-shot JobScheduler checks.
-The first check is due immediately; subsequent checks use the configured interval,
-including intervals below the periodic-job minimum. Android battery/background
-restrictions can delay execution. Restart schedules an overdue missing job;
-pausing cancels scheduled checks and manual refresh remains available.
-Each refresh downloads full snapshots, starts at the primary and tries each
-source once. Requests use a 15-second connect/read timeout and a 45-second read
-budget, with a 4 MiB decoded-body limit and strict UTF-8. TLS verification is
-mandatory, redirects and non-200 responses are rejected, and no conditional cache
-is used. Downloads follow the Android VPN routing policy for the app; when the
-app is excluded from per-app VPN routing, downloads use its ordinary network.
-They do not bypass the VPN or enable a disconnected VPN automatically.
-
-Snapshots commit profiles, imported preferences, ownership, selection and status
-as one storage transaction. Failure retains the previous configuration. Selection,
-Always-on selection and runtime connection profile are preserved while present;
-removed selections use the downloaded `activeProfileId`, then the first imported
-profile. Separately added profiles remain and omitted profile secrets follow the
-normal import-preservation rules. Canonical snapshots update only explicitly supplied
-global preference fields, preserving local values for omitted fields, including within
-partially supplied groups. Text/FoxyProxy snapshots leave global preferences local.
-The connection-desired flag is never
-changed, so bootstrap does not authorize a VPN connection.
-
-Android keeps an established tunnel on its existing native configuration.
-A successful update that changes its effective connection settings marks the
-existing **Reconnect** action and shows a notice in subscription settings.
-The user reconnects to apply it; an update never tears down a working tunnel or
-claims that its stored snapshot has already migrated live connections. Inactive
-profile metadata and identical effective settings do not create a reconnect notice.
-No system notification permission is requested for subscription updates.
-
-## Browser update algorithm
-
-BrowserMegaProxy applies the following algorithm to scheduled configuration checks
-and the **Update now** action in its settings and popup:
-
-1. Keep the persisted subscription definition and previous working state. A manual
-   refresh may run while paused; scheduled checks may not. Download sources in order
-   under the existing timeout, size, authentication and redirect rules.
-2. Parse with the ordinary importer. Validate known fields, supported transports
-   and canonical profile references. Discard unknown/unsupported fields with the
-   same compatibility warnings as manual import. A malformed or wholly unsupported
-   snapshot fails this source and leaves the previous state intact.
-3. Reconcile subscription-owned profiles using stable IDs, or the documented unique
-   matching rules for legacy formats. Preserve separately added profiles; remove
-   only absent profiles owned by this subscription.
-4. Apply explicitly supplied settings represented by the format; preserve omitted
-   supported browser preferences and nested fields. Keep local subscription
-   authentication, interval and pause state. A supplied root `subscription` object
-   replaces source URLs according to the browser source-replacement rules below.
-5. Preserve the local selected profile if it survives, regardless of a different
-   downloaded `activeProfileId`. If a previously selected profile disappears, choose
-   the importable downloaded `activeProfileId`, then the first importable snapshot
-   profile, then the first remaining local profile. The latter is only a defensive
-   fallback: empty/wholly unsupported snapshots must already have failed validation.
-   With no profile available, retain no selection. Do not connect automatically if
-   there was no previous selection; preserve the local Proxy/Direct/System mode.
-6. Compare the previous and new effective connection settings. This includes the
-   selected profile ID, protocol, endpoint, authentication, knock host, exclusions
-   and MASQUE template, local-network bypass and the active routing mode/patterns.
-   Name, color, country and inactive-profile edits do not require a connection notice.
-7. Apply the new native proxy/privacy settings and persist the new configuration
-   as one transaction. Failure rolls back the configuration and native settings;
-   it must not mark a failed snapshot as successful or emit a success notice.
-8. Restart authentication/knock preparation when the selected proxy or credentials
-   changed, cancel obsolete authentication dialogs, and invalidate connection-check
-   results when effective connection settings changed. Retain saved routing choices.
-9. When a previously active connection changed, persist a local connection-update
-   notice. Show it in popup/settings and mark the toolbar with `!`. Optionally show
-   a system notification through the browser's notifications API, only with an
-   explicitly granted optional permission. Notification failure must not roll back
-   or block an otherwise successful configuration update. Include no credentials
-   or configuration body in notices. Identical effective settings do not notify.
-10. Store last success, import warnings and successful source, then stop source
-    failover. Schedule the next check only when automatic checks remain enabled.
-    If every source fails, retain the working state and show the download/import
-    failure for the next scheduled or manual retry.
-
-Firefox reads the current state in `proxy.onRequest` for subsequent requests, so
-profile and routing changes are used without restarting the extension or browser.
-Existing streams and connections are not migrated: reload affected pages. See
-[Firefox proxy.onRequest](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/proxy/onRequest).
-
-Chromium applies new native proxy/PAC settings immediately. The extension API does
-not provide a general command to migrate or close every established browser
-connection or reset all native proxy authentication state. BrowserMegaProxy therefore
-asks users to restart the browser to ensure all open connections use the updated
-configuration; it does not claim that new connections must wait for that restart.
-See the [Chromium proxy API](https://developer.chrome.com/docs/extensions/reference/api/proxy)
-and [notifications API](https://developer.chrome.com/docs/extensions/reference/api/notifications).
-The notice can be acknowledged and is cleared at browser startup; service-worker
-suspension/restart alone does not acknowledge it. Notification permission and local
-notice state are not imported, exported or synchronized through the config contract.
-
-The same effective-settings comparison applies when Podkop lists refresh. Download
-and validate lists first, compute the rules for the active routing mode/strategy,
-apply native settings and persist the new snapshot, then invalidate checks and notify
-if those rules changed while a proxy was active. A catalog-only refresh, identical
-lists, inactive routing lists or Direct/System do not produce a connection notice.
-A failed list/native-setting/persistence update retains the working list snapshot
-and reports its failure. Temporary routing used to download lists must be restored
-in all paths and is not itself a user configuration change. Legacy Firefox tab routing without an explicit strategy combines downloaded
-`siteSources` and manual site patterns. Explicit `tabs` remains a manual strategy
-and does not download or activate those inactive subscription sources.
+Each client documents its stable X-MegaProxy-Client identifier and supported legacy
+formats. Windows uses `windows`; runtime scheduling may be delayed while the client
+or its service is not running. Its established tunnel uses the applied settings
+until reconnect. Platform permissions cannot be granted through a downloaded file.
 
 ## HTTP errors and optional conditional downloads
 
