@@ -63,10 +63,22 @@ endpoints require numeric IPs and an optional port. Clients document transport
 limits, DNS routing and local security approvals; importing a file cannot grant
 permissions or local trust approvals. Query tokens may be sensitive export data.
 
-Shared routing includes `bypassLocalNetworks` (default true) and profile `allowIpv6`.
-Clients document whether the latter is enforceable; Windows ignores it and always
-allows IPv6, subject to ordinary explicit routing/block rules. No import disables
-the operating system's IPv6. Application selection is a platform extension.
+Shared routing includes `bypassLocalNetworks` (default true), profile
+`profiles[].routing.allowIpv6` and root `routing.systemAllowIpv6` (both default
+false). The profile option permits IPv6 destinations through that proxy; the
+root option permits IPv6 destinations through the system connection. These are
+independent of the address family used to connect to the proxy itself.
+An omitted root option leaves the current setting unchanged during import.
+Clients without a separate system route may ignore the system option.
+
+Windows enables IPv6 on its TUN only when all used Internet routes permit it:
+proxy-only needs the active profile option, system-only needs the root option,
+and mixed routing needs both. Disabled rules are ignored; an unconditional
+all-applications/all-destinations rule terminates routing before the default.
+Block rules, internal core bypass and local-network bypass do not add an
+Internet route. No automatic uplink detection is used. Reconnect after changes.
+No import disables the operating system's IPv6. Application selection remains
+a platform extension.
 
 Failover modes are DISABLED, SELECTED and ALL, with unique profile IDs. Clients
 document candidate ordering and supported failure conditions. Authentication and

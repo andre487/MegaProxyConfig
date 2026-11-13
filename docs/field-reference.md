@@ -13,7 +13,7 @@ own their validation and documentation.
 | TLS | fingerprint, customJa3 |
 | SSH | fingerprint, authMode, keepaliveSeconds, maxChannels, rotationMinutes, rotationMb |
 | DNS | provider, customDohUrl |
-| Routing | bypassLocalNetworks, allowIpv6 |
+| Routing | bypassLocalNetworks; profile allowIpv6; root systemAllowIpv6 |
 | Failover | mode, profileIds |
 | Subscription | url, username, password, intervalMinutes, enabled, fallbackUrls |
 

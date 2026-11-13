@@ -348,7 +348,14 @@
           "default": true
         },
         "allowIpv6": {
-          "type": "boolean"
+          "type": "boolean",
+          "default": false,
+          "description": "Profile permission for IPv6 destinations through this proxy."
+        },
+        "systemAllowIpv6": {
+          "type": "boolean",
+          "default": false,
+          "description": "Root routing option: allow IPv6 destinations through the system connection."
         }
       },
       "required": [],
