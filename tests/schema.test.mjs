@@ -175,3 +175,18 @@ test('HTTP/2 preference is typed and optional', async () => {
     assert.equal(shared(config), false)
   }
 })
+
+test('IPv6 permissions are separate optional booleans', async () => {
+  const config = await read('examples/windows-v8.json')
+  config.routing = { systemAllowIpv6: true }
+  config.profiles[0].routing = { allowIpv6: false }
+  for (const validate of [shared, android]) {
+    assert.ok(validate(config), JSON.stringify(validate.errors))
+    config.routing.systemAllowIpv6 = 'true'
+    assert.equal(validate(config), false)
+    config.routing.systemAllowIpv6 = true
+    config.profiles[0].routing.allowIpv6 = 'false'
+    assert.equal(validate(config), false)
+    config.profiles[0].routing.allowIpv6 = false
+  }
+})
