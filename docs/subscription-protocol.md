@@ -14,7 +14,7 @@ property once. Subsequent background updates use these persisted settings:
 ```json
 {
   "schema": "net.megaproxy487.config",
-  "version": 8,
+  "version": 9,
   "subscription": {
     "url": "https://configs.example.com/team.json",
     "fallbackUrls": ["https://backup.example.com/team.json"],
@@ -143,8 +143,8 @@ is mandatory. See [HTTP Basic authentication, RFC 7617](https://www.rfc-editor.o
 
 ## Response formats
 
-A successful response is 200 with a complete UTF-8 snapshot. MegaProxy versions 8 and 9
-JSON is the canonical representation, served as `application/json`. The snapshot
+A successful response is 200 with a complete UTF-8 snapshot. MegaProxy
+JSON (v8 or v9) is the canonical representation, served as `application/json`. The snapshot
 must pass schema, unique-ID, reference and client-capability checks. It need not
 repeat `subscription`. Downloaded credentials, interval and enabled flag never
 replace the corresponding local subscription preferences. Clients may replace
