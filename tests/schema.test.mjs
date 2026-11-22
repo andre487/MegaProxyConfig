@@ -18,11 +18,11 @@ test('mixed Android HTTPS and MASQUE retain separate custom TLS and QUIC JA3 fie
   const masque = config.profiles.find(p => p.proxy.type === 'MASQUE')
   assert.ok(config.profiles.some(p => p.proxy.type === 'HTTPS'))
   assert.equal(config.android.tls.fingerprint, 'CUSTOM')
-  assert.equal(config.tls.fingerprint, undefined)
+  assert.equal(config.tls, undefined)
   assert.equal(masque.tls.fingerprint, 'CUSTOM')
-  assert.notEqual(config.tls.customJa3, masque.tls.customJa3)
+  assert.notEqual(config.android.tls.customJa3, masque.tls.customJa3)
   assert.ok(masque.tls.customJa3.split(',')[2].split('-').includes('57'))
-  assert.ok(!config.tls.customJa3.split(',')[2].split('-').includes('57'))
+  assert.ok(!config.android.tls.customJa3.split(',')[2].split('-').includes('57'))
   for (const validate of [android, shared]) {
     assert.ok(validate(config), JSON.stringify(validate.errors))
     for (const value of [42, 'x'.repeat(8193)]) {
@@ -189,5 +189,28 @@ test('IPv6 permissions are separate optional booleans', async () => {
     config.profiles[0].routing.allowIpv6 = 'false'
     assert.equal(validate(config), false)
     config.profiles[0].routing.allowIpv6 = false
+  }
+})
+
+test('legacy Android paths stay valid and only the migrated paths are deprecated', async () => {
+  const config = await read('examples/android-v8.json')
+  const { routing, ssh, tls, alwaysOnProfileId } = config.android
+  delete config.android
+  Object.assign(config, { ssh, tls, alwaysOnProfileId })
+  Object.assign(config.routing, routing)
+  config.profiles[0].routing = routing
+  for (const validate of [shared, android]) {
+    assert.ok(validate(config), JSON.stringify(validate.errors))
+    const { properties, $defs } = validate.schema
+    assert.equal(properties.alwaysOnProfileId.deprecated, true)
+    for (const key of Object.keys(tls)) {
+      assert.equal(properties.tls.properties[key].deprecated, true)
+      assert.equal($defs.tls.properties[key].deprecated, undefined)
+    }
+    for (const key of Object.keys(ssh)) assert.equal($defs.ssh.properties[key].deprecated, true)
+    for (const key of Object.keys(routing)) assert.equal($defs.routing.properties[key].deprecated, true)
+    assert.equal(properties.diagnosticLogLimitMb.deprecated, undefined)
+    assert.equal($defs.ssh.properties.authMode.deprecated, undefined)
+    assert.equal($defs.routing.properties.bypassLocalNetworks.deprecated, undefined)
   }
 })

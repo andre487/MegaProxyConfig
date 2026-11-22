@@ -30,12 +30,27 @@ The owning application validates and documents its fields, versions and semantic
 The common schema does not enumerate platforms or validate their inner settings.
 Use `android`, `browser`, `windows`, or another unambiguous platform name as needed.
 
-Android application selection (`routeAllApps`, `selectedPackages`) belongs to an
-Android routing section, not the shared routing contract. Existing root/profile
-`routing.routeAllApps` and `routing.selectedPackages`, and root `alwaysOnProfileId`,
-are legacy Android extensions. They remain readable as unknown fields for older
-files; other clients must not translate Android package IDs into local app rules.
-Migrating existing Android writers is owned by AndroidMegaProxy.
+### Deprecated Android paths
+
+New Android configurations use the version 1 `android` section. The following
+legacy paths remain valid in v8 files and subscriptions.
+
+| Deprecated path | Android replacement |
+| --- | --- |
+| `alwaysOnProfileId` | `android.alwaysOnProfileId` |
+| `routing.routeAllApps`, `routing.selectedPackages` | `android.routing.routeAllApps`, `android.routing.selectedPackages` |
+| `profiles[].routing.routeAllApps`, `profiles[].routing.selectedPackages` | `profiles[].android.routing.routeAllApps`, `profiles[].android.routing.selectedPackages` |
+| `tls.fingerprint`, `tls.customJa3` | `android.tls.fingerprint`, `android.tls.customJa3` |
+| `ssh.fingerprint`, `ssh.keepaliveSeconds`, `ssh.maxChannels`, `ssh.rotationMinutes`, `ssh.rotationMb` | Same field names under `android.ssh` |
+
+Android resolves each field independently. A supplied Android value wins, including
+`false`, zero and an empty package list. A missing field falls back to its legacy
+path. An unsupported Android section version is ignored at its own scope. Other
+clients may still consume legacy paths. Package names identify Android apps only.
+
+`diagnosticLogLimitMb`, `ssh.authMode` and `routing.bypassLocalNetworks` remain
+shared. Profile TLS fields keep their existing meaning, including the separate
+QUIC JA3 in `profiles[].tls.customJa3`.
 
 Foreign sections and unknown fields are not retained for later export. Show one
 general import notice without exposing their names or values, then project onto
@@ -110,8 +125,8 @@ by the password checkbox. Unknown fields must not carry hidden tokens into expor
 
 Export current common settings, not stale copies retained from a prior import.
 Do not write contradictory common/platform copies of the same supported setting.
-Legacy platform aliases may be read; the common field takes precedence when both
-are present. Platform-only choices stay in the owning section.
+For settings that remain shared, the common field takes precedence over a legacy
+platform alias. Android precedence for migrated fields is documented above. Platform-only choices stay in the owning section.
 
 Clients may also import legacy MegaProxy versions, FoxyProxy, ProxyList or SuperProxy
 subsets. These formats cannot carry all settings. Document supported formats and

@@ -10,12 +10,14 @@ own their validation and documentation.
 | Profile | id, name, color, countryCode, proxy, tls, dns, routing |
 | Proxy | type, host, port, username, password, privateKey, allowInvalidProxyCertificate, sshProfile, trustedHostKey, acceptAnyHostKey, jump, preferHttp2, preferHttp3, knockHost |
 | Jump | host, port, sameAuthentication, username, password, privateKey, trustedHostKey, acceptAnyHostKey, allowInvalidProxyCertificate |
-| TLS | fingerprint (deprecated at document level), customJa3 |
-| SSH | fingerprint, authMode, keepaliveSeconds, maxChannels, rotationMinutes, rotationMb |
+| TLS | fingerprint, customJa3 (both deprecated at document level) |
+| SSH | authMode; deprecated document paths: fingerprint, keepaliveSeconds, maxChannels, rotationMinutes, rotationMb |
 | DNS | provider, customDohUrl |
 | Routing | bypassLocalNetworks; profile allowIpv6; root systemAllowIpv6 |
 | Failover | mode, profileIds |
 | Subscription | url, username, password, intervalMinutes, enabled, fallbackUrls |
+
+See [deprecated Android paths](configuration.md#deprecated-android-paths) for replacements, including the old Always-on and package-routing fields.
 
 Unsupported shared fields are reported and discarded, just like foreign platform
 extensions. Presence in the schema does not guarantee implementation in every client.
