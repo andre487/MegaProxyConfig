@@ -1,6 +1,6 @@
 # MegaProxyConfig
 
-The shared version 8 configuration contract for MegaProxy clients.
+The shared version 9 configuration contract for MegaProxy clients.
 The JSON Schema uses draft 2020-12 and validates common fields only.
 
 Configurations may include platform-specific sections at document and profile
@@ -11,13 +11,14 @@ Unsupported fields are reported and discarded by the receiving client.
 - [Format and import semantics](docs/configuration.md)
 - [Shared field reference](docs/field-reference.md)
 - [Configuration subscriptions](docs/subscription-protocol.md)
-- [Shared schema](schemas/megaproxy-v8.schema.json)
-- [Example with Android extensions](examples/android-v8.json)
-- [Example with browser extensions](examples/browser-v8.json)
-- [Example with Windows extensions](examples/windows-v8.json)
+- [Shared schema](schemas/megaproxy-v9.schema.json)
+- [Example with Android extensions](examples/android-v9.json)
+- [Example with browser extensions](examples/browser-v9.json)
+- [Example with Windows extensions](examples/windows-v9.json)
 
 Run `npm ci && npm test`. Examples demonstrate common fields and opaque extensions;
 passing this schema does not validate the extensions or guarantee client support.
+Version 8 schemas and examples remain available for clients that only accept v8.
 `android-v8.schema.json` remains a distribution compatibility alias for existing
 consumers; it no longer defines Android-specific settings.
 

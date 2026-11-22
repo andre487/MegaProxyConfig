@@ -3,7 +3,7 @@
 This protocol distributes configuration snapshots over HTTPS. It uses ordinary
 HTTP GET and optional Basic Auth; it does not require a dedicated server, registry,
 custom URI scheme or WebDAV. A static HTTPS file server with access control is
-sufficient. The portable document format remains version 8: this specification
+sufficient. The portable document format is version 9: this specification
 defines its delivery and update behavior, not a new proxy transport.
 
 ## Bootstrap and subscription settings
@@ -14,7 +14,7 @@ property once. Subsequent background updates use these persisted settings:
 ```json
 {
   "schema": "net.megaproxy487.config",
-  "version": 8,
+  "version": 9,
   "subscription": {
     "url": "https://configs.example.com/team.json",
     "fallbackUrls": ["https://backup.example.com/team.json"],
@@ -71,7 +71,7 @@ when passwords are omitted. Subscription credentials, profile ownership and refr
 status stay local rather than automatically joining browser-account sync.
 
 Clients without subscription support may ignore this additive field. AndroidMegaProxy
-supports the same root definition and validates it in its version 8 schema.
+supports the same root definition and validates it in its version 8 and 9 schemas.
 BrowserMegaProxy also allows the user to subscribe while importing a remote URL;
 exporting the resulting settings produces the same root property.
 
@@ -143,8 +143,8 @@ is mandatory. See [HTTP Basic authentication, RFC 7617](https://www.rfc-editor.o
 
 ## Response formats
 
-A successful response is 200 with a complete UTF-8 snapshot. MegaProxy version 8
-JSON is the canonical representation, served as `application/json`. The snapshot
+A successful response is 200 with a complete UTF-8 snapshot. MegaProxy
+JSON (v8 or v9) is the canonical representation, served as `application/json`. The snapshot
 must pass schema, unique-ID, reference and client-capability checks. It need not
 repeat `subscription`. Downloaded credentials, interval and enabled flag never
 replace the corresponding local subscription preferences. Clients may replace
@@ -156,7 +156,7 @@ its usual limitations. BrowserMegaProxy accepts the following:
 
 | Body | Imported settings | Limits |
 | --- | --- | --- |
-| MegaProxy JSON | Supported proxy fields, browser preferences and routing | Unsupported transports and platform-specific fields are reported; stable IDs are required in canonical v8. |
+| MegaProxy JSON | Supported proxy fields, browser preferences and routing | Unsupported transports and platform-specific fields are reported; stable IDs are required in v8 and v9. |
 | ZeroOmega JSON | Compatible fixed profiles, bypasses and supported hostname routing | PAC execution, arbitrary rules, chains and independent per-scheme endpoints are unsupported. |
 | FoxyProxy JSON | Compatible profiles, credentials and supported profile metadata | FoxyProxy-wide settings and pattern/PAC semantics are not imported. |
 | SuperProxy JSON | Compatible proxy profiles and supported profile fields | VPN, per-app and mobile-specific settings are not imported. |
@@ -280,3 +280,5 @@ curl --fail --user reader https://configs.example.com/team.json
 Keep this protocol's delivery semantics when serving legacy bodies. Their source
 applications' own PAC updates, cloud synchronization or URI import mechanisms are
 separate features and do not imply support for this subscription protocol.
+
+Serve v8 snapshots to clients that only accept v8. The subscription client ID does not by itself identify a supported document version.
