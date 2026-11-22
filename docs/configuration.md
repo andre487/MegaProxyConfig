@@ -1,8 +1,8 @@
-# Portable configuration version 8
+# Portable configuration version 9
 
 ## Common document
 
-Require `schema: "net.megaproxy487.config"`, `version: 8` and 1–1,000 profiles.
+Require `schema: "net.megaproxy487.config"`, `version: 9` and 1–1,000 profiles.
 Accept the legacy schema identifier `dev.megaproxy.config`. Profile IDs are stable,
 unique, nonempty strings of at most 256 characters. Applied ID references must
 resolve to a profile; semantic validation belongs to consumers, beyond JSON Schema.
@@ -33,7 +33,7 @@ Use `android`, `browser`, `windows`, or another unambiguous platform name as nee
 ### Deprecated Android paths
 
 New Android configurations use the version 1 `android` section. The following
-legacy paths remain valid in v8 files and subscriptions.
+legacy paths remain valid in v8 and v9 files and subscriptions.
 
 | Deprecated path | Android replacement |
 | --- | --- |
@@ -130,7 +130,7 @@ platform alias. Android precedence for migrated fields is documented above. Plat
 
 Clients may also import legacy MegaProxy versions, FoxyProxy, ProxyList or SuperProxy
 subsets. These formats cannot carry all settings. Document supported formats and
-warn about skipped entries. Prefer v8 JSON for complete supported transfer.
+warn about skipped entries. Prefer v9 JSON for complete supported transfer.
 
 Configuration refresh behavior is defined in [subscription-protocol.md](subscription-protocol.md).
 Application update packages and their installer/store mechanisms are outside this configuration contract.

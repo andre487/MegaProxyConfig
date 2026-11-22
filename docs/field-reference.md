@@ -1,6 +1,6 @@
 # Shared field reference
 
-Types, limits and enums are defined by [the schema](../schemas/megaproxy-v8.schema.json).
+Types, limits and enums are defined by [the schema](../schemas/megaproxy-v9.schema.json).
 Platform sections are intentionally absent from this inventory; their applications
 own their validation and documentation.
 
