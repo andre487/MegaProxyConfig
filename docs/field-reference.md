@@ -10,7 +10,7 @@ own their validation and documentation.
 | Profile | id, name, color, countryCode, proxy, tls, dns, routing |
 | Proxy | type, host, port, username, password, privateKey, allowInvalidProxyCertificate, sshProfile, trustedHostKey, acceptAnyHostKey, jump, preferHttp2, preferHttp3, knockHost |
 | Jump | host, port, sameAuthentication, username, password, privateKey, trustedHostKey, acceptAnyHostKey, allowInvalidProxyCertificate |
-| TLS | fingerprint, customJa3 |
+| TLS | fingerprint (deprecated at document level), customJa3 |
 | SSH | fingerprint, authMode, keepaliveSeconds, maxChannels, rotationMinutes, rotationMb |
 | DNS | provider, customDohUrl |
 | Routing | bypassLocalNetworks; profile allowIpv6; root systemAllowIpv6 |

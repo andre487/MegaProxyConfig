@@ -44,6 +44,11 @@ also be ignored as a whole; none of its settings may execute indirectly.
 
 ## TLS, SSH, DNS and routing
 
+Document-level `tls.fingerprint` is deprecated. Existing documents remain valid.
+Android writes `android.tls.fingerprint` in its version 1 section and reads the
+legacy field when the Android preset is absent. The value `default` selects the
+current application default, including after updates.
+
 Use the shared TLS identifiers DEFAULT, CHROME_ANDROID, FIREFOX_ANDROID,
 EDGE_ANDROID, RANDOMIZED, SAMSUNG_INTERNET, YANDEX_BROWSER and CUSTOM. These names
 are portable identifiers, not a promise of identical wire bytes across TLS stacks.
