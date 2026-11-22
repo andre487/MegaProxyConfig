@@ -38,7 +38,14 @@
       "maximum": 100
     },
     "tls": {
-      "$ref": "#/$defs/tls"
+      "$ref": "#/$defs/tls",
+      "properties": {
+        "fingerprint": {
+          "deprecated": true,
+          "description": "Legacy document-wide preset. Prefer the receiving client's platform section; Android uses android.tls.fingerprint."
+        }
+      },
+      "type": "object"
     },
     "ssh": {
       "$ref": "#/$defs/ssh"
